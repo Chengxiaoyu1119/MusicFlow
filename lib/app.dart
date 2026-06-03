@@ -16,6 +16,8 @@ import 'features/playlist/pages/playlist_detail_page.dart';
 import 'features/search/pages/search_page.dart';
 import 'features/settings/pages/settings_page.dart';
 import 'features/settings/pages/lyrics_settings_page.dart';
+import 'features/auth/pages/login_page.dart';
+import 'features/playlist/pages/user_playlists_page.dart';
 import 'features/downloads/pages/downloads_page.dart';
 import 'features/equalizer/pages/equalizer_page.dart';
 import 'features/plugins/pages/plugin_manager_page.dart';
@@ -147,6 +149,20 @@ class _MusicPlayerAppState extends ConsumerState<MusicPlayerApp> {
               pageBuilder: (context, state) => NoTransitionPage(
                 key: state.pageKey,
                 child: const DesktopLyricsOverlay(),
+              ),
+            ),
+            GoRoute(
+              path: '/login',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const LoginPage(),
+              ),
+            ),
+            GoRoute(
+              path: '/user-playlists',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const UserPlaylistsPage(),
               ),
             ),
             GoRoute(

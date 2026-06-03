@@ -54,6 +54,24 @@ class SettingsPage extends ConsumerWidget {
           ),
           const Divider(),
 
+          // Account
+          _SectionHeader(title: '账号'),
+          _SettingsTile(
+            icon: Icons.person_rounded,
+            title: '网易云音乐',
+            subtitle: '登录后获取我的歌单',
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/login'),
+          ),
+          _SettingsTile(
+            icon: Icons.playlist_play_rounded,
+            title: '我的歌单',
+            subtitle: '查看并播放网易云歌单',
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/user-playlists'),
+          ),
+          const Divider(),
+
           // Display
           _SectionHeader(title: '显示'),
           _SettingsTile(
