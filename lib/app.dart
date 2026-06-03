@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -199,25 +201,62 @@ class _AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasMusic = ref.watch(currentMusicProvider).valueOrNull != null;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(child: child),
-          if (hasMusic) const MiniPlayer(),
-          const _BottomNavBar(),
+          // Main content
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: 64 + (hasMusic ? 64 : 0),
+            ),
+            child: child,
+          ),
+          // Mini player (floating above bottom nav)
+          if (hasMusic)
+            Positioned(
+              bottom: 64,
+              left: 0,
+              right: 0,
+              child: const MiniPlayer(),
+            ),
+          // Bottom nav with glass effect
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface.withValues(alpha: 0.85),
+                    border: Border(
+                      top: BorderSide(
+                        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: _BottomNavContent(),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _BottomNavBar extends ConsumerWidget {
-  const _BottomNavBar();
-
+class _BottomNavContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.toString();
+    final theme = Theme.of(context);
 
     int currentIndex = 0;
     if (location.startsWith('/library')) currentIndex = 1;
@@ -225,87 +264,61 @@ class _BottomNavBar extends ConsumerWidget {
     if (location.startsWith('/plugins')) currentIndex = 3;
     if (location.startsWith('/settings')) currentIndex = 4;
 
-    return BottomAppBar(
+    final items = [
+      (icon: Icons.explore_rounded, label: '发现', route: '/'),
+      (icon: Icons.library_music_rounded, label: '音乐库', route: '/library'),
+      (icon: Icons.search_rounded, label: '搜索', route: '/search'),
+      (icon: Icons.extension_rounded, label: '插件', route: '/plugins'),
+      (icon: Icons.settings_rounded, label: '设置', route: '/settings'),
+    ];
+
+    return SizedBox(
       height: 64,
-      padding: EdgeInsets.zero,
-      color: Theme.of(context).colorScheme.surface,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.explore_rounded,
-                label: '发现',
-                isSelected: currentIndex == 0,
-                onTap: () => context.go('/'),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(items.length, (i) {
+          final item = items[i];
+          final isSelected = i == currentIndex;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => context.go(item.route),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: isSelected ? 0 : 4,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: isSelected
+                      ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                      : Colors.transparent,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      item.icon,
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                      size: 22,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(item.label,
+                      style: TextStyle(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      )),
+                  ],
+                ),
               ),
-              _NavItem(
-                icon: Icons.library_music_rounded,
-                label: '音乐库',
-                isSelected: currentIndex == 1,
-                onTap: () => context.go('/library'),
-              ),
-              _NavItem(
-                icon: Icons.search_rounded,
-                label: '搜索',
-                isSelected: currentIndex == 2,
-                onTap: () => context.go('/search'),
-              ),
-              _NavItem(
-                icon: Icons.extension_rounded,
-                label: '插件',
-                isSelected: currentIndex == 3,
-                onTap: () => context.go('/plugins'),
-              ),
-              _NavItem(
-                icon: Icons.settings_rounded,
-                label: '设置',
-                isSelected: currentIndex == 4,
-                onTap: () => context.go('/settings'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w500)),
-          ],
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
