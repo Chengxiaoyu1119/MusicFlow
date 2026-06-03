@@ -20,6 +20,7 @@ import 'features/auth/pages/login_page.dart';
 import 'features/playlist/pages/user_playlists_page.dart';
 import 'features/downloads/pages/downloads_page.dart';
 import 'features/equalizer/pages/equalizer_page.dart';
+import 'features/discover/pages/discover_page.dart';
 import 'features/plugins/pages/plugin_manager_page.dart';
 import 'features/stats/pages/stats_page.dart';
 import 'features/player/widgets/desktop_lyrics_overlay.dart';
@@ -90,6 +91,13 @@ class _MusicPlayerAppState extends ConsumerState<MusicPlayerApp> {
           routes: [
             GoRoute(
               path: '/',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const DiscoverPage(),
+              ),
+            ),
+            GoRoute(
+              path: '/library',
               pageBuilder: (context, state) => NoTransitionPage(
                 key: state.pageKey,
                 child: const LibraryPage(),
@@ -212,9 +220,10 @@ class _BottomNavBar extends ConsumerWidget {
     final location = GoRouterState.of(context).uri.toString();
 
     int currentIndex = 0;
-    if (location.startsWith('/search')) currentIndex = 1;
-    if (location.startsWith('/plugins')) currentIndex = 2;
-    if (location.startsWith('/settings')) currentIndex = 3;
+    if (location.startsWith('/library')) currentIndex = 1;
+    if (location.startsWith('/search')) currentIndex = 2;
+    if (location.startsWith('/plugins')) currentIndex = 3;
+    if (location.startsWith('/settings')) currentIndex = 4;
 
     return BottomAppBar(
       height: 64,
@@ -223,32 +232,38 @@ class _BottomNavBar extends ConsumerWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(
-                icon: Icons.library_music_rounded,
-                label: '音乐库',
+                icon: Icons.explore_rounded,
+                label: '发现',
                 isSelected: currentIndex == 0,
                 onTap: () => context.go('/'),
               ),
               _NavItem(
+                icon: Icons.library_music_rounded,
+                label: '音乐库',
+                isSelected: currentIndex == 1,
+                onTap: () => context.go('/library'),
+              ),
+              _NavItem(
                 icon: Icons.search_rounded,
                 label: '搜索',
-                isSelected: currentIndex == 1,
+                isSelected: currentIndex == 2,
                 onTap: () => context.go('/search'),
               ),
               _NavItem(
                 icon: Icons.extension_rounded,
                 label: '插件',
-                isSelected: currentIndex == 2,
+                isSelected: currentIndex == 3,
                 onTap: () => context.go('/plugins'),
               ),
               _NavItem(
                 icon: Icons.settings_rounded,
                 label: '设置',
-                isSelected: currentIndex == 3,
+                isSelected: currentIndex == 4,
                 onTap: () => context.go('/settings'),
               ),
             ],
