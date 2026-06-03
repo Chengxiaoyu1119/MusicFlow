@@ -35,7 +35,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Scaffold(
       appBar: AppBar(
         title: SearchBar(
-          hintText: 'Search songs, artists, albums...',
+          hintText: '搜索歌曲、艺术家、专辑...',
           controller: _searchController,
           leading: const Icon(Icons.search_rounded),
           trailing: [
@@ -80,7 +80,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             Icon(Icons.search_rounded, size: 64,
               color: theme.colorScheme.primary.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
-            Text('Search your music or explore online',
+            Text('搜索你的音乐或探索在线资源',
               style: theme.textTheme.titleMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant)),
           ],
@@ -93,7 +93,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     }
 
     if (!hasAny) {
-      return Center(child: Text('No results found',
+      return Center(child: Text('未找到结果',
         style: theme.textTheme.bodyMedium?.copyWith(
           color: theme.colorScheme.onSurfaceVariant)));
     }
@@ -107,8 +107,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: SegmentedButton<bool>(
               segments: const [
-                ButtonSegment(value: false, label: Text('Local'), icon: Icon(Icons.music_note_rounded)),
-                ButtonSegment(value: true, label: Text('Online'), icon: Icon(Icons.cloud_rounded)),
+                ButtonSegment(value: false, label: Text('本地'), icon: Icon(Icons.music_note_rounded)),
+                ButtonSegment(value: true, label: Text('在线'), icon: Icon(Icons.cloud_rounded)),
               ],
               selected: {_showOnline},
               onSelectionChanged: (v) => setState(() => _showOnline = v.first),

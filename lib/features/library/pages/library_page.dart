@@ -35,7 +35,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Library'),
+        title: const Text('音乐库'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search_rounded),
@@ -61,12 +61,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'scan', child: ListTile(
                 leading: Icon(Icons.refresh_rounded),
-                title: Text('Scan Local Music'),
+                title: Text('扫描本地音乐'),
                 contentPadding: EdgeInsets.zero,
               )),
               const PopupMenuItem(value: 'pick', child: ListTile(
                 leading: Icon(Icons.file_open_rounded),
-                title: Text('Import Files'),
+                title: Text('导入文件'),
                 contentPadding: EdgeInsets.zero,
               )),
               const PopupMenuItem(value: 'plugins', child: ListTile(
@@ -91,9 +91,9 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: SegmentedButton<int>(
                 segments: const [
-                  ButtonSegment(value: 0, label: Text('Tracks'), icon: Icon(Icons.music_note_rounded)),
-                  ButtonSegment(value: 1, label: Text('Albums'), icon: Icon(Icons.album_rounded)),
-                  ButtonSegment(value: 2, label: Text('Smart'), icon: Icon(Icons.auto_awesome_rounded)),
+                  ButtonSegment(value: 0, label: Text('曲目'), icon: Icon(Icons.music_note_rounded)),
+                  ButtonSegment(value: 1, label: Text('专辑'), icon: Icon(Icons.album_rounded)),
+                  ButtonSegment(value: 2, label: Text('智能'), icon: Icon(Icons.auto_awesome_rounded)),
                 ],
                 selected: {_viewMode},
                 onSelectionChanged: (v) => setState(() => _viewMode = v.first),
@@ -189,7 +189,7 @@ class _EmptyLibrary extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Import local music files or install plugins\nto start listening',
+              '导入本地音乐文件或安装插件即可开始聆听',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -199,7 +199,7 @@ class _EmptyLibrary extends StatelessWidget {
             FilledButton.icon(
               onPressed: onPickFiles,
               icon: const Icon(Icons.file_open_rounded),
-              label: const Text('Import Music Files'),
+              label: const Text('导入音乐文件'),
             ),
             const SizedBox(height: 12),
             TextButton(

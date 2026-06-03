@@ -213,25 +213,25 @@ class _BottomNavBar extends ConsumerWidget {
             children: [
               _NavItem(
                 icon: Icons.library_music_rounded,
-                label: 'Library',
+                label: '音乐库',
                 isSelected: currentIndex == 0,
                 onTap: () => context.go('/'),
               ),
               _NavItem(
                 icon: Icons.search_rounded,
-                label: 'Search',
+                label: '搜索',
                 isSelected: currentIndex == 1,
                 onTap: () => context.go('/search'),
               ),
               _NavItem(
                 icon: Icons.extension_rounded,
-                label: 'Plugins',
+                label: '插件',
                 isSelected: currentIndex == 2,
                 onTap: () => context.go('/plugins'),
               ),
               _NavItem(
                 icon: Icons.settings_rounded,
-                label: 'Settings',
+                label: '设置',
                 isSelected: currentIndex == 3,
                 onTap: () => context.go('/settings'),
               ),

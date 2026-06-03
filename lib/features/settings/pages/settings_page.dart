@@ -19,11 +19,11 @@ class SettingsPage extends ConsumerWidget {
     final accentColor = ref.watch(accentColorProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: const Text('设置')),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          _SectionHeader(title: 'Playback'),
+          _SectionHeader(title: '播放'),
           _SettingsTile(
             icon: Icons.volume_up_rounded,
             title: 'Volume',
@@ -55,7 +55,7 @@ class SettingsPage extends ConsumerWidget {
           const Divider(),
 
           // Display
-          _SectionHeader(title: 'Display'),
+          _SectionHeader(title: '显示'),
           _SettingsTile(
             icon: Icons.palette_rounded,
             title: 'Theme',
@@ -80,7 +80,7 @@ class SettingsPage extends ConsumerWidget {
           const Divider(),
 
           // Tools
-          _SectionHeader(title: 'Tools'),
+          _SectionHeader(title: '工具'),
           _SettingsTile(
             icon: Icons.timer_rounded,
             title: 'Sleep Timer',
@@ -128,7 +128,7 @@ class SettingsPage extends ConsumerWidget {
           const Divider(),
 
           // Storage
-          _SectionHeader(title: 'Storage'),
+          _SectionHeader(title: '存储'),
           _SettingsTile(
             icon: Icons.folder_rounded,
             title: 'Music Library Path',
@@ -145,7 +145,7 @@ class SettingsPage extends ConsumerWidget {
           const Divider(),
 
           // About
-          _SectionHeader(title: 'About'),
+          _SectionHeader(title: '关于'),
           _SettingsTile(
             icon: Icons.info_outline_rounded,
             title: 'Version',
@@ -165,9 +165,9 @@ class SettingsPage extends ConsumerWidget {
 
   String _themeModeLabel(ThemeMode mode) {
     return switch (mode) {
-      ThemeMode.light => 'Light',
-      ThemeMode.dark => 'Dark',
-      ThemeMode.system => 'System',
+      ThemeMode.light => '浅色',
+      ThemeMode.dark => '深色',
+      ThemeMode.system => '跟随系统',
     };
   }
 
@@ -183,7 +183,7 @@ class SettingsPage extends ConsumerWidget {
             children: [
               const Padding(
                 padding: EdgeInsets.only(bottom: 16),
-                child: Text('Choose Theme', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text('选择主题', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               ...ThemeMode.values.map((mode) {
                 final icon = switch (mode) {
