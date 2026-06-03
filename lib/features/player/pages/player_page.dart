@@ -15,6 +15,7 @@ import '../widgets/lyrics_widget.dart';
 import '../widgets/spectrum_widget.dart';
 import '../widgets/player_gesture_handler.dart';
 import '../widgets/desktop_lyrics_overlay.dart';
+import '../widgets/particle_background.dart';
 import '../services/sleep_timer_service.dart';
 
 class PlayerPage extends ConsumerStatefulWidget {
@@ -97,25 +98,39 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
         ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0) : 0.0;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              _dominantColor.withValues(alpha: 0.6),
-              theme.colorScheme.surface,
-              theme.colorScheme.surface,
-            ],
+      body: Stack(
+        children: [
+          // Particle effects background
+          Positioned.fill(
+            child: ParticleBackground(
+              isActive: isPlaying,
+              color: _dominantColor,
+            ),
           ),
-        ),
-        child: SafeArea(
+          // Main gradient background
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _dominantColor.withValues(alpha: 0.6),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.surface,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Content
+          SafeArea(
           child: isWide ? _buildWideLayout(music, theme, isPlaying, position,
               duration, repeatMode, isShuffle, progress, handler, lyricsAsync)
               : _buildNarrowLayout(music, theme, isPlaying, position, duration,
               repeatMode, isShuffle, progress, handler, lyricsAsync, sleepTimer, queue),
         ),
-      ),
+      ]),
     );
   }
 
