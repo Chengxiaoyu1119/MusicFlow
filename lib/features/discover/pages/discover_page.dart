@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
+import 'package:morphing_glow/morphing_glow.dart';
 
 import '../../../api/auth_service.dart';
-import '../../../api/netease_api.dart';
+import '../../../data/repository/sample_data.dart';
 
-/// 发现页 — 推荐、排行榜、新歌（参考 YesPlayMusic 首页设计）
+/// 发现页 — 参考 YesPlayMusic 首页设计
 class DiscoverPage extends ConsumerStatefulWidget {
   const DiscoverPage({super.key});
 
@@ -15,384 +15,350 @@ class DiscoverPage extends ConsumerStatefulWidget {
 }
 
 class _DiscoverPageState extends ConsumerState<DiscoverPage> {
-  final NeteaseApiClient _api = NeteaseApiClient(baseUrl: 'http://localhost:3000');
-  List<Map<String, dynamic>> _recommendPlaylists = [];
-  List<Map<String, dynamic>> _toplists = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() => _loading = true);
-    try {
-      // 尝试从 API 加载，失败则用示例数据
-      final results = await Future.wait([
-        _api.getRecommendPlaylists().catchError((_) => <Map<String, dynamic>>[]),
-        _api.getToplists().catchError((_) => <Map<String, dynamic>>[]),
-      ]);
-      if (mounted) {
-        setState(() {
-          _recommendPlaylists = results[0];
-          _toplists = results[1];
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final theme = Theme.of(context);
+    // final isWide = MediaQuery.of(context).size.width > 720;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MusicFlow'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_rounded),
-            onPressed: () => context.push('/login'),
+      body: CustomScrollView(
+        slivers: [
+          // ===== 顶部栏 =====
+          SliverAppBar(
+            floating: true,
+            title: Row(
+              children: [
+                MorphingGlow(
+                  glowColors: [theme.colorScheme.primary],
+                  child: Icon(Icons.music_note_rounded,
+                    color: theme.colorScheme.primary, size: 28),
+                ),
+                const SizedBox(width: 8),
+                Text('MusicFlow',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold)),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.search_rounded),
+                onPressed: () => context.push('/search'),
+              ),
+              IconButton(
+                icon: const Icon(Icons.person_outline_rounded),
+                onPressed: () => context.push('/login'),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 24),
+
+          // ===== 欢迎语 =====
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 欢迎栏
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  Text('今天想听什么？',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(auth.isLoggedIn && auth.nickname != null
+                          ? '${auth.nickname}，欢迎回来'
+                          : '发现音乐，发现美好',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                      const Spacer(),
+                      if (auth.isLoggedIn)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('今天想听什么？',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold)),
-                              if (auth.isLoggedIn && auth.nickname != null)
-                                Text('${auth.nickname}，欢迎回来',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.primary)),
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: theme.colorScheme.primary,
+                                child: Text(auth.nickname![0],
+                                  style: TextStyle(fontSize: 11,
+                                    color: theme.colorScheme.onPrimary)),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(auth.nickname!,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onPrimaryContainer)),
                             ],
                           ),
                         ),
-                        // 搜索入口
-                        IconButton.filled(
-                          icon: const Icon(Icons.search_rounded),
-                          onPressed: () => context.push('/search'),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 推荐歌单
-                  _buildSectionHeader(theme, '推荐歌单', '为你精选'),
-                  SizedBox(
-                    height: 200,
-                    child: _recommendPlaylists.isNotEmpty
-                        ? ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: _recommendPlaylists.length,
-                            itemBuilder: (context, index) {
-                              final pl = _recommendPlaylists[index];
-                              return _PlaylistCard(
-                                name: pl['name'] as String? ?? '',
-                                cover: (pl['picUrl'] ?? pl['coverImgUrl']) as String? ?? '',
-                                playCount: pl['playCount'] as int? ?? 0,
-                                onTap: () => _playPlaylist(pl),
-                              );
-                            },
-                          )
-                        : _buildPlaceholderRow(theme, '登录后查看推荐歌单'),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 排行榜
-                  _buildSectionHeader(theme, '排行榜', '热门榜单'),
-                  SizedBox(
-                    height: 180,
-                    child: _toplists.isNotEmpty
-                        ? ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: _toplists.length,
-                            itemBuilder: (context, index) {
-                              final tl = _toplists[index];
-                              return _PlaylistCard(
-                                name: tl['name'] as String? ?? '',
-                                cover: (tl['coverImgUrl'] ?? tl['picUrl']) as String? ?? '',
-                                subtitle: tl['description'] as String?,
-                                onTap: () => _playToplist(tl),
-                                small: true,
-                              );
-                            },
-                          )
-                        : _buildPlaceholderRow(theme, '登录后查看排行榜'),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // 网易云登录提示
-                  if (!auth.isLoggedIn)
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [theme.colorScheme.primaryContainer, theme.colorScheme.primary.withValues(alpha: 0.1)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('登录网易云音乐',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                Text('获取你的歌单、每日推荐和更多功能',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant)),
-                              ],
-                            ),
-                          ),
-                          FilledButton(
-                            onPressed: () => context.push('/login'),
-                            child: const Text('登录'),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // 功能入口
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        _FeatureChip(
-                          icon: Icons.local_fire_department_rounded,
-                          label: '每日推荐',
-                          color: Colors.orange,
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 12),
-                        _FeatureChip(
-                          icon: Icons.radio_rounded,
-                          label: '私人 FM',
-                          color: Colors.purple,
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 12),
-                        _FeatureChip(
-                          icon: Icons.podcasts_rounded,
-                          label: '播客',
-                          color: Colors.teal,
-                          onTap: () {},
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
                 ],
               ),
             ),
-    );
-  }
+          ),
 
-  Widget _buildSectionHeader(ThemeData theme, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Row(
-        children: [
-          Text(title, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant)),
-          const Spacer(),
-          TextButton(onPressed: () {}, child: const Text('查看全部')),
+          // ===== 快捷分类入口 =====
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(
+              child: SizedBox(
+                height: 80,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: SampleData.genres.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final g = SampleData.genres[index];
+                    return Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          child: Text(g['name']!, style: const TextStyle(fontSize: 11)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(g['name']!, style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w500)),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // ===== 推荐歌单 =====
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                children: [
+                  Text('推荐歌单', style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => context.push('/search'),
+                    child: const Text('查看更多'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            sliver: SliverToBoxAdapter(
+              child: SizedBox(
+                height: 200,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: SampleData.recommendPlaylists.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final pl = SampleData.recommendPlaylists[index];
+                    return _PlaylistCard(
+                      name: pl['name'] as String,
+                      playCount: pl['playCount'] as int,
+                      index: index,
+                      onTap: () {},
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+
+          // ===== 排行榜 =====
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                children: [
+                  Text('排行榜', style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () { /* 查看全部排行榜 */ },
+                    child: const Text('查看更多'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 8),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final tl = SampleData.toplists[index];
+                  return ListTile(
+                    leading: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: theme.colorScheme.primaryContainer,
+                      ),
+                      child: Center(
+                        child: Text('${index + 1}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: index < 3 ? theme.colorScheme.primary : null,
+                            fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    title: Text(tl['name'] as String,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(tl['description'] as String,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant)),
+                    trailing: const Icon(Icons.play_circle_outline_rounded),
+                    onTap: () {},
+                  );
+                },
+                childCount: SampleData.toplists.length,
+              ),
+            ),
+          ),
+
+          // ===== 登录引导 =====
+          if (!auth.isLoggedIn)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              sliver: SliverToBoxAdapter(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primaryContainer,
+                        theme.colorScheme.surfaceContainerHighest,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('登录网易云音乐',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text('获取你的歌单、每日推荐',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant)),
+                          ],
+                        ),
+                      ),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.login_rounded, size: 18),
+                        onPressed: () => context.push('/login'),
+                        label: const Text('登录'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // ===== 底部间距 =====
+          const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
         ],
       ),
     );
-  }
-
-  Widget _buildPlaceholderRow(ThemeData theme, String message) {
-    return ListView.builder(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return Container(
-          width: 140,
-          margin: const EdgeInsets.only(right: 12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.music_note_outlined, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3), size: 32),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(message,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant),
-                  textAlign: TextAlign.center,
-                  maxLines: 2),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _playPlaylist(Map<String, dynamic> pl) async {
-    try {
-      // 歌单加载（需接入 API）
-    } catch (_) {}
-  }
-
-  Future<void> _playToplist(Map<String, dynamic> tl) async {
-    try {
-    } catch (_) {}
   }
 }
 
 class _PlaylistCard extends StatelessWidget {
   final String name;
-  final String cover;
   final int playCount;
-  final String? subtitle;
-  final VoidCallback? onTap;
-  final bool small;
+  final int index;
+  final VoidCallback onTap;
+
+  static const List<Color> _gradients = [
+    Colors.blue, Colors.purple, Colors.teal, Colors.orange,
+    Colors.pink, Colors.indigo,
+  ];
 
   const _PlaylistCard({
     required this.name,
-    required this.cover,
-    this.playCount = 0,
-    this.subtitle,
-    this.onTap,
-    this.small = false,
+    required this.playCount,
+    required this.index,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final width = small ? 130.0 : 150.0;
+    final color = _gradients[index % _gradients.length];
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: width,
-        margin: const EdgeInsets.only(right: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    cover.isNotEmpty
-                        ? CachedNetworkImage(imageUrl: cover, fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => _placeholder(theme))
-                        : _placeholder(theme),
-                    if (playCount > 0)
-                      Positioned(
-                        top: 6, right: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.play_arrow_rounded, size: 12, color: Colors.white),
-                              Text(_formatCount(playCount),
-                                style: const TextStyle(color: Colors.white, fontSize: 10)),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+        width: 150,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [color, color.withValues(alpha: 0.6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-            const SizedBox(height: 6),
-            Text(name, maxLines: small ? 1 : 2, overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500)),
-            if (subtitle != null)
-              Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, fontSize: 10)),
           ],
         ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Spacer(),
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.play_arrow_rounded,
+                  color: Colors.white, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14),
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
+              Text('${_formatCount(playCount)} 次播放',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 11),
+              ),
+            ],
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _placeholder(ThemeData theme) {
-    return Container(
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Icon(Icons.music_note_rounded, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2)),
     );
   }
 
   String _formatCount(int c) {
     if (c >= 10000) return '${(c / 10000).toStringAsFixed(1)}万';
     return c.toString();
-  }
-}
-
-class _FeatureChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _FeatureChip({required this.icon, required this.label, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 4),
-              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 12)),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
