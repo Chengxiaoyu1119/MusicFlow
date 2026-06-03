@@ -17,7 +17,7 @@ class LibraryPage extends ConsumerStatefulWidget {
 }
 
 class _LibraryPageState extends ConsumerState<LibraryPage> {
-  int _viewMode = 0; // 0=list, 1=album, 2=smart
+  int _viewMode = 0;
 
   @override
   void initState() {
@@ -32,6 +32,8 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final library = ref.watch(libraryServiceProvider);
     final localMusic = library.localMusic;
     final smartPlaylists = ref.watch(smartPlaylistProvider);
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       appBar: AppBar(
@@ -44,18 +46,10 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
-                case 'scan':
-                  library.scanLocalMusic();
-                  break;
-                case 'pick':
-                  library.pickMusicFiles();
-                  break;
-                case 'plugins':
-                  context.go('/plugins');
-                  break;
-                case 'settings':
-                  context.go('/settings');
-                  break;
+                case 'scan': library.scanLocalMusic(); break;
+                case 'pick': library.pickMusicFiles(); break;
+                case 'plugins': context.go('/plugins'); break;
+                case 'settings': context.go('/settings'); break;
               }
             },
             itemBuilder: (context) => [
@@ -71,12 +65,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
               )),
               const PopupMenuItem(value: 'plugins', child: ListTile(
                 leading: Icon(Icons.extension_rounded),
-                title: Text('Plugins'),
+                title: Text('插件'),
                 contentPadding: EdgeInsets.zero,
               )),
               const PopupMenuItem(value: 'settings', child: ListTile(
                 leading: Icon(Icons.settings_rounded),
-                title: Text('Settings'),
+                title: Text('设置'),
                 contentPadding: EdgeInsets.zero,
               )),
             ],
@@ -88,20 +82,23 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           // View mode toggle
           if (localMusic.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('曲目'), icon: Icon(Icons.music_note_rounded)),
-                  ButtonSegment(value: 1, label: Text('专辑'), icon: Icon(Icons.album_rounded)),
-                  ButtonSegment(value: 2, label: Text('智能'), icon: Icon(Icons.auto_awesome_rounded)),
-                ],
-                selected: {_viewMode},
-                onSelectionChanged: (v) => setState(() => _viewMode = v.first),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SizedBox(
+                width: screenWidth > 500 ? 400 : null,
+                child: SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('曲目'), icon: Icon(Icons.music_note_rounded, size: 16)),
+                    ButtonSegment(value: 1, label: Text('专辑'), icon: Icon(Icons.album_rounded, size: 16)),
+                    ButtonSegment(value: 2, label: Text('智能'), icon: Icon(Icons.auto_awesome_rounded, size: 16)),
+                  ],
+                  selected: {_viewMode},
+                  onSelectionChanged: (v) => setState(() => _viewMode = v.first),
+                ),
               ),
             ),
           Expanded(
             child: localMusic.isEmpty
-                ? _EmptyLibrary(onPickFiles: () => library.pickMusicFiles())
+                ? _EmptyLibrary(onPickFiles: () => library.pickMusicFiles(), theme: theme)
                 : _viewMode == 1
                     ? const AlbumGrid()
                     : _viewMode == 2
@@ -111,6 +108,83 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
         ],
       ),
     );
+  }
+}
+
+class _EmptyLibrary extends StatelessWidget {
+  final VoidCallback onPickFiles;
+  final ThemeData theme;
+  const _EmptyLibrary({required this.onPickFiles, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 100, height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primaryContainer,
+              ),
+              child: Icon(Icons.library_music_outlined, size: 48,
+                color: theme.colorScheme.onPrimaryContainer),
+            ),
+            const SizedBox(height: 24),
+            Text('音乐库为空', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Text('导入本地音乐文件或安装插件即可开始聆听',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: onPickFiles,
+              icon: const Icon(Icons.file_open_rounded),
+              label: const Text('导入音乐文件'),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => context.go('/plugins'),
+              child: const Text('浏览插件'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MusicList extends ConsumerWidget {
+  final List<Music> musicList;
+  const _MusicList({required this.musicList});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (musicList.isEmpty) return const SizedBox.shrink();
+
+    return RefreshIndicator(
+      onRefresh: () async { /* refresh */ },
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: musicList.length,
+        separatorBuilder: (_, __) => const Divider(height: 1, indent: 72, endIndent: 16),
+        itemBuilder: (context, index) {
+          final music = musicList[index];
+          return MusicTile(
+            music: music,
+            onTap: () => _playMusic(ref, musicList, index),
+            showArtwork: true,
+          );
+        },
+      ),
+    );
+  }
+
+  void _playMusic(WidgetRef ref, List<Music> list, int index) {
+    ref.read(audioHandlerProvider).setQueue(list, startIndex: index);
   }
 }
 
@@ -129,14 +203,12 @@ class _SmartPlaylistsView extends ConsumerWidget {
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: theme.colorScheme.primaryContainer,
-              child: Icon(
-                _iconForType(playlist.type),
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
+              child: Icon(_iconForType(playlist.type),
+                color: theme.colorScheme.onPrimaryContainer, size: 20),
             ),
             title: Text(playlist.type.displayName,
               style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('${playlist.tracks.length} tracks · ${playlist.type.description}'),
+            subtitle: Text('${playlist.tracks.length} 首 · ${playlist.type.description}'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () {
               if (playlist.tracks.isNotEmpty) {
@@ -158,85 +230,5 @@ class _SmartPlaylistsView extends ConsumerWidget {
       case SmartPlaylistType.frequentArtists: return Icons.people_rounded;
       case SmartPlaylistType.recentlyFavorited: return Icons.favorite_border_rounded;
     }
-  }
-}
-
-class _EmptyLibrary extends StatelessWidget {
-  final VoidCallback onPickFiles;
-
-  const _EmptyLibrary({required this.onPickFiles});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.library_music_outlined,
-              size: 80,
-              color: theme.colorScheme.primary.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Your music library is empty',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '导入本地音乐文件或安装插件即可开始聆听',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: onPickFiles,
-              icon: const Icon(Icons.file_open_rounded),
-              label: const Text('导入音乐文件'),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => context.go('/plugins'),
-              child: const Text('Browse Plugins'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MusicList extends ConsumerWidget {
-  final List<Music> musicList;
-
-  const _MusicList({required this.musicList});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (musicList.isEmpty) return const SizedBox.shrink();
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 8),
-      itemCount: musicList.length,
-      itemBuilder: (context, index) {
-        final music = musicList[index];
-        return MusicTile(
-          music: music,
-          onTap: () => _playMusic(ref, musicList, index),
-        );
-      },
-    );
-  }
-
-  void _playMusic(WidgetRef ref, List<Music> list, int index) {
-    final handler = ref.read(audioHandlerProvider);
-    handler.setQueue(list, startIndex: index);
   }
 }
