@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 import '../../../audio/audio_handler.dart';
 import '../../../audio/audio_provider.dart';
@@ -12,7 +13,6 @@ import '../../../data/repository/favorites_provider.dart';
 import '../../../shared/widgets/music_tile.dart';
 import '../widgets/lyrics_widget.dart';
 import '../widgets/spectrum_widget.dart';
-import '../widgets/glassmorphic_art.dart';
 import '../widgets/player_gesture_handler.dart';
 import '../widgets/desktop_lyrics_overlay.dart';
 import '../services/sleep_timer_service.dart';
@@ -28,22 +28,33 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
     with SingleTickerProviderStateMixin {
   bool _showLyrics = false;
   late final AnimationController _rotationController;
+  Color _dominantColor = Colors.black;
 
   @override
   void initState() {
     super.initState();
     _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 8),
+      vsync: this, duration: const Duration(seconds: 8),
     );
   }
 
   void _updateRotation(bool isPlaying) {
-    if (isPlaying) {
-      _rotationController.repeat();
-    } else {
-      _rotationController.stop();
-    }
+    if (isPlaying) _rotationController.repeat();
+    else _rotationController.stop();
+  }
+
+  Future<void> _extractColors(String? imageUrl) async {
+    if (imageUrl == null) return;
+    try {
+      final palette = await PaletteGenerator.fromImageProvider(
+        CachedNetworkImageProvider(imageUrl),
+        maximumColorCount: 5,
+      );
+      if (!mounted) return;
+      setState(() {
+        _dominantColor = palette.dominantColor?.color ?? Colors.black;
+      });
+    } catch (_) {}
   }
 
   @override
@@ -67,351 +78,263 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
     final handler = ref.watch(audioHandlerProvider);
     final theme = Theme.of(context);
 
+    // Extract colors when music changes
+    if (music != null) _extractColors(music.artworkUrl);
+
     if (music == null) {
-      return Scaffold(body: _buildEmptyState(theme));
+      return Scaffold(body: Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.music_note_outlined, size: 96,
+            color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+          const SizedBox(height: 24),
+          Text('暂无播放', style: theme.textTheme.titleLarge),
+        ]),
+      ));
     }
 
+    final isWide = MediaQuery.of(context).size.width > 800;
     final progress = duration.inMilliseconds > 0
-        ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
-        : 0.0;
+        ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0) : 0.0;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Glassmorphic background
-          GlassmorphicArt(
-            imageUrl: music.artworkUrl,
-            blurSigma: 35,
-            opacity: 0.25,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _dominantColor.withValues(alpha: 0.6),
+              theme.colorScheme.surface,
+              theme.colorScheme.surface,
+            ],
           ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(theme, music, handler, sleepTimer, queue, lyricsAsync),
-                Expanded(
-                  child: PlayerGestureHandler(
-                    onNext: handler.skipToNext,
-                    onPrevious: handler.skipToPrevious,
-                    onSeekForward: () => handler.seek(position + const Duration(seconds: 10)),
-                    onSeekBackward: () => handler.seek(position - const Duration(seconds: 10)),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _showLyrics = !_showLyrics),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _showLyrics
-                            ? _buildLyricsView(music, position, lyricsAsync, handler)
-                            : _buildArtView(music, theme, isPlaying),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Spectrum
-                SizedBox(
-                  height: 28,
-                  child: SpectrumWidget(
-                    isPlaying: isPlaying,
-                    barColor: theme.colorScheme.primary,
-                    barCount: 48,
-                  ),
-                ),
-                // Music info + Volume
-                _buildMusicInfo(theme, music),
-                // Progress bar
-                _buildProgressBar(theme, progress, position, duration, handler),
-                // Controls
-                _buildControls(theme, isPlaying, isShuffle, repeatMode, handler),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120, height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.colorScheme.surfaceContainerHighest,
-            ),
-            child: Icon(Icons.music_note_outlined, size: 56,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
-          ),
-          const SizedBox(height: 24),
-          Text('暂无播放', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Text('从音乐库选择歌曲开始播放',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopBar(ThemeData theme, Music music, MusicAudioHandler handler,
-      SleepTimerState sleepTimer, List<Music> queue, AsyncValue<Lyrics?> lyricsAsync) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down_rounded),
-            onPressed: () => context.pop(),
-          ),
-          if (sleepTimer.isActive)
-            GestureDetector(
-              onTap: () => ref.read(sleepTimerProvider.notifier).cancel(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.tertiaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.timer_rounded, size: 14,
-                      color: theme.colorScheme.onTertiaryContainer),
-                    const SizedBox(width: 4),
-                    Text(ref.read(sleepTimerProvider.notifier).formattedRemaining,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onTertiaryContainer,
-                        fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ),
-          const Spacer(),
-          Text('正在播放',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant)),
-          const Spacer(),
-          if (DesktopLyricsOverlay.isSupported)
-            IconButton(
-              icon: Icon(
-                _showLyrics ? Icons.lyrics_rounded : Icons.lyrics_outlined,
-                color: _showLyrics ? theme.colorScheme.primary : null,
-              ),
-              onPressed: () => setState(() => _showLyrics = !_showLyrics),
-              tooltip: '切换歌词',
-            ),
-          IconButton(
-            icon: const Icon(Icons.queue_music_rounded),
-            onPressed: () => _showQueue(context, queue, handler),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildArtView(Music music, ThemeData theme, bool isPlaying) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 56),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Glow effect
-            if (music.artworkUrl != null)
-              Container(
-                width: double.infinity,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      blurRadius: 60,
-                      spreadRadius: 20,
-                    ),
-                  ],
-                ),
-              ),
-            // Album art with rotation
-            RotationTransition(
-              turns: _rotationController,
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: music.artworkUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: music.artworkUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => _placeholderArt(theme),
-                            errorWidget: (_, __, ___) => _placeholderArt(theme),
-                          )
-                        : _placeholderArt(theme),
-                  ),
-                ),
-              ),
-            ),
-            // Center icon overlay
-            if (!isPlaying)
-              Container(
-                width: 64, height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.4),
-                ),
-                child: const Icon(Icons.play_arrow_rounded,
-                  color: Colors.white, size: 36),
-              ),
-          ],
+        ),
+        child: SafeArea(
+          child: isWide ? _buildWideLayout(music, theme, isPlaying, position,
+              duration, repeatMode, isShuffle, progress, handler, lyricsAsync)
+              : _buildNarrowLayout(music, theme, isPlaying, position, duration,
+              repeatMode, isShuffle, progress, handler, lyricsAsync, sleepTimer, queue),
         ),
       ),
     );
   }
 
-  Widget _buildMusicInfo(ThemeData theme, Music music) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(music.title,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(music.artist,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w500),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (music.album.isNotEmpty)
-                  Text(music.album,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-            ),
+  // ==================== 宽屏布局（平板/桌面） ====================
+  Widget _buildWideLayout(Music music, ThemeData theme, bool isPlaying,
+      Duration position, Duration duration, int repeatMode, bool isShuffle,
+      double progress, MusicAudioHandler handler, AsyncValue<Lyrics?> lyricsAsync) {
+    return Row(
+      children: [
+        // Left: Album art + controls
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildAlbumArt(music, theme, isPlaying),
+              const SizedBox(height: 32),
+              _buildControls(theme, isPlaying, isShuffle, repeatMode, handler),
+              const SizedBox(height: 16),
+              _buildProgressBar(theme, progress, position, duration, handler),
+            ],
           ),
-          Consumer(
-            builder: (context, watchRef, _) {
-              final favs = watchRef.watch(favoritesProvider);
-              final isFav = favs.contains(music.id);
-              return IconButton(
-                icon: Icon(
-                  isFav ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-                  color: isFav ? theme.colorScheme.primary : null,
-                ),
-                onPressed: () => watchRef.read(favoritesProvider.notifier).toggle(music.id),
-              );
-            },
-          ),
-        ],
-      ),
+        ),
+        // Right: Lyrics or info
+        Expanded(
+          child: _buildLyricsView(music, position, lyricsAsync, handler),
+        ),
+      ],
     );
   }
 
-  Widget _buildProgressBar(ThemeData theme, double progress,
-      Duration position, Duration duration, MusicAudioHandler handler) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-      child: Column(
-        children: [
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 5,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
-              activeTrackColor: theme.colorScheme.primary,
-              inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
-              thumbColor: theme.colorScheme.primary,
-              valueIndicatorColor: theme.colorScheme.primary,
-              valueIndicatorTextStyle: TextStyle(
-                color: theme.colorScheme.onPrimary,
-                fontSize: 12,
+  // ==================== 窄屏布局（手机） ====================
+  Widget _buildNarrowLayout(Music music, ThemeData theme, bool isPlaying,
+      Duration position, Duration duration, int repeatMode, bool isShuffle,
+      double progress, MusicAudioHandler handler, AsyncValue<Lyrics?> lyricsAsync,
+      SleepTimerState sleepTimer, List<Music> queue) {
+    return Column(
+      children: [
+        // Top bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                onPressed: () => context.pop(),
+              ),
+              if (sleepTimer.isActive)
+                GestureDetector(
+                  onTap: () => ref.read(sleepTimerProvider.notifier).cancel(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.timer_rounded, size: 14,
+                        color: theme.colorScheme.onTertiaryContainer),
+                      const SizedBox(width: 4),
+                      Text(ref.read(sleepTimerProvider.notifier).formattedRemaining,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onTertiaryContainer, fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
+                ),
+              const Spacer(),
+              Text('正在播放',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant)),
+              const Spacer(),
+              if (DesktopLyricsOverlay.isSupported)
+                IconButton(
+                  icon: Icon(_showLyrics ? Icons.lyrics_rounded : Icons.lyrics_outlined,
+                    color: _showLyrics ? theme.colorScheme.primary : null),
+                  onPressed: () => setState(() => _showLyrics = !_showLyrics),
+                ),
+              IconButton(
+                icon: const Icon(Icons.queue_music_rounded),
+                onPressed: () => _showQueue(context, queue, handler),
+              ),
+            ],
+          ),
+        ),
+
+        // Album art + Lyrics toggle
+        Expanded(
+          child: PlayerGestureHandler(
+            onNext: handler.skipToNext,
+            onPrevious: handler.skipToPrevious,
+            onSeekForward: () => handler.seek(position + const Duration(seconds: 10)),
+            onSeekBackward: () => handler.seek(position - const Duration(seconds: 10)),
+            child: GestureDetector(
+              onTap: () => setState(() => _showLyrics = !_showLyrics),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _showLyrics
+                    ? _buildLyricsView(music, position, lyricsAsync, handler)
+                    : _buildAlbumArt(music, theme, isPlaying),
               ),
             ),
-            child: Slider(
-              value: progress,
-              onChanged: (v) {
-                final pos = Duration(
-                  milliseconds: (v * duration.inMilliseconds).round());
-                handler.seek(pos);
-              },
+          ),
+        ),
+
+        // Spectrum
+        SizedBox(
+          height: 24,
+          child: SpectrumWidget(isPlaying: isPlaying,
+            barColor: theme.colorScheme.primary, barCount: 36),
+        ),
+
+        // Music info
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(music.title,
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Text(music.artist,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary, fontWeight: FontWeight.w500),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+              Consumer(
+                builder: (context, watchRef, _) {
+                  final favs = watchRef.watch(favoritesProvider);
+                  final isFav = favs.contains(music.id);
+                  return IconButton(
+                    icon: Icon(
+                      isFav ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+                      color: isFav ? theme.colorScheme.error : null,
+                    ),
+                    onPressed: () => watchRef.read(favoritesProvider.notifier).toggle(music.id),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+
+        // Progress + Controls
+        _buildProgressBar(theme, progress, position, duration, handler),
+        _buildControls(theme, isPlaying, isShuffle, repeatMode, handler),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  // ==================== Album Art ====================
+  Widget _buildAlbumArt(Music music, ThemeData theme, bool isPlaying) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 8),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: _dominantColor.withValues(alpha: 0.3),
+                blurRadius: 40,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: RotationTransition(
+            turns: _rotationController,
+            child: ClipOval(
+              child: music.artworkUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: music.artworkUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _placeholderArt(theme),
+                      errorWidget: (_, __, ___) => _placeholderArt(theme),
+                    )
+                  : _placeholderArt(theme),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(_fmtDuration(position),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
-                Text('-${_fmtDuration(duration - position)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
+  // ==================== Controls ====================
   Widget _buildControls(ThemeData theme, bool isPlaying, bool isShuffle,
       int repeatMode, MusicAudioHandler handler) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          IconButton(
-            icon: Icon(Icons.shuffle_rounded,
-              color: isShuffle ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-              size: 22),
-            onPressed: () => handler.toggleShuffle(),
+          _SmallCtrlBtn(
+            icon: Icons.shuffle_rounded,
+            isActive: isShuffle,
+            onTap: () => handler.toggleShuffle(),
           ),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.colorScheme.surfaceContainerHighest,
-            ),
-            child: IconButton(
-              icon: Icon(Icons.skip_previous_rounded,
-                color: theme.colorScheme.onSurface),
-              iconSize: 32,
-              onPressed: handler.skipToPrevious,
-            ),
+          _SmallCtrlBtn(
+            icon: Icons.skip_previous_rounded,
+            size: 30,
+            onTap: handler.skipToPrevious,
           ),
           Container(
             width: 64, height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.8),
-                ],
+                colors: [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 12,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                  blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -424,26 +347,59 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
               onPressed: () => handler.togglePlayPause(),
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.colorScheme.surfaceContainerHighest,
+          _SmallCtrlBtn(
+            icon: Icons.skip_next_rounded,
+            size: 30,
+            onTap: () => handler.skipToNext(),
+          ),
+          _SmallCtrlBtn(
+            icon: repeatMode == 1 ? Icons.repeat_rounded :
+                repeatMode == 2 ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+            isActive: repeatMode > 0,
+            onTap: () => handler.cycleRepeatMode(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== Progress Bar ====================
+  Widget _buildProgressBar(ThemeData theme, double progress,
+      Duration position, Duration duration, MusicAudioHandler handler) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      child: Column(
+        children: [
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+              activeTrackColor: theme.colorScheme.primary,
+              inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+              thumbColor: theme.colorScheme.primary,
             ),
-            child: IconButton(
-              icon: Icon(Icons.skip_next_rounded,
-                color: theme.colorScheme.onSurface),
-              iconSize: 32,
-              onPressed: () => handler.skipToNext(),
+            child: Slider(
+              value: progress,
+              onChanged: (v) {
+                final pos = Duration(milliseconds: (v * duration.inMilliseconds).round());
+                handler.seek(pos);
+              },
             ),
           ),
-          IconButton(
-            icon: Icon(
-              repeatMode == 1 ? Icons.repeat_rounded :
-                  repeatMode == 2 ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-              color: repeatMode > 0 ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-              size: 22,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_fmtDuration(position),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
+                Text(_fmtDuration(duration),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
+              ],
             ),
-            onPressed: () => handler.cycleRepeatMode(),
           ),
         ],
       ),
@@ -454,9 +410,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
       AsyncValue<Lyrics?> lyricsAsync, MusicAudioHandler handler) {
     return lyricsAsync.when(
       data: (lyrics) {
-        if (lyrics == null || lyrics.isEmpty) {
-          return _buildArtView(music, Theme.of(context), false);
-        }
+        if (lyrics == null || lyrics.isEmpty) return _buildAlbumArt(music, Theme.of(context), false);
         return LyricsWidget(
           key: ValueKey(music.id),
           lyrics: lyrics,
@@ -465,15 +419,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => _buildArtView(music, Theme.of(context), false),
+      error: (_, __) => _buildAlbumArt(music, Theme.of(context), false),
     );
   }
 
   Widget _placeholderArt(ThemeData theme) {
     return Container(
-      color: theme.colorScheme.primaryContainer,
-      child: Icon(Icons.music_note_rounded, size: 80,
-        color: theme.colorScheme.onPrimaryContainer),
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(Icons.music_note_rounded, size: 72,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
     );
   }
 
@@ -484,8 +438,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
     return '$m:${s.toString().padLeft(2, '0')}';
   }
 
-  // ==================== 队列管理 ====================
-
+  // ==================== 播放队列 ====================
   void _showQueue(BuildContext context, List<Music> queue, MusicAudioHandler handler) {
     if (queue.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -493,121 +446,124 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
       );
       return;
     }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            var items = List<Music>.from(queue);
-            return DraggableScrollableSheet(
-              initialChildSize: 0.65,
-              maxChildSize: 0.9,
-              minChildSize: 0.3,
-              expand: false,
-              builder: (context, scrollController) {
-                return Column(
-                  children: [
-                    // Handle
-                    Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      width: 36, height: 4,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(2),
+        var items = List<Music>.from(queue);
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6, maxChildSize: 0.9, minChildSize: 0.3,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                child: Row(children: [
+                  Text('播放队列 (${items.length})',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  TextButton.icon(
+                    icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+                    label: const Text('清空'),
+                    onPressed: () { handler.clearQueue(); Navigator.pop(context); },
+                  ),
+                ]),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final music = items[index];
+                    final isCurrent = index == handler.currentIndex;
+                    return Dismissible(
+                      key: ValueKey('q_${music.id}_$index'),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        child: Icon(Icons.delete_outline_rounded,
+                          color: Theme.of(context).colorScheme.error),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-                      child: Row(
-                        children: [
-                          Text('播放队列 (${items.length})',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          if (items.isNotEmpty)
-                            TextButton.icon(
-                              icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                              label: const Text('清空'),
-                              onPressed: () {
-                                handler.clearQueue();
-                                Navigator.pop(context);
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ReorderableListView.builder(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        itemCount: items.length,
-                        onReorder: (oldIndex, newIndex) {
-                          setSheetState(() {
-                            if (newIndex > oldIndex) newIndex--;
-                            final item = items.removeAt(oldIndex);
-                            items.insert(newIndex, item);
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          final music = items[index];
-                          final isCurrent = index == handler.currentIndex;
-                          return Dismissible(
-                            key: ValueKey('queue_${music.id}_$index'),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              color: Theme.of(context).colorScheme.errorContainer,
-                              child: Icon(Icons.delete_outline_rounded,
-                                color: Theme.of(context).colorScheme.error),
-                            ),
-                            onDismissed: (_) => handler.removeFromQueue(index),
-                            child: MusicTile(
-                              music: music,
-                              onTap: () {
-                                handler.setQueue(items, startIndex: index);
-                                Navigator.pop(context);
-                              },
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (isCurrent)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primaryContainer,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text('正在播放',
-                                        style: TextStyle(fontSize: 10,
-                                          color: Theme.of(context).colorScheme.onPrimaryContainer)),
-                                    ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close_rounded, size: 18),
-                                    onPressed: () => handler.removeFromQueue(index),
-                                  ),
-                                  ReorderableDragStartListener(
-                                    index: index,
-                                    child: const Icon(Icons.drag_handle_rounded, size: 20),
-                                  ),
-                                ],
+                      onDismissed: (_) => handler.removeFromQueue(index),
+                      child: MusicTile(music: music,
+                        onTap: () { handler.setQueue(items, startIndex: index); Navigator.pop(context); },
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          if (isCurrent)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
                               ),
+                              child: Text('正在播放',
+                                style: TextStyle(fontSize: 10,
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer)),
                             ),
-                          );
-                        },
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () => handler.removeFromQueue(index),
+                          ),
+                        ]),
                       ),
-                    ),
-                  ],
-                );
-              },
-            );
+                    );
+                  },
+                ),
+              ),
+            ]);
           },
         );
       },
+    );
+  }
+}
+
+// ==================== 小控件按钮 ====================
+class _SmallCtrlBtn extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _SmallCtrlBtn({
+    required this.icon,
+    this.size = 22,
+    this.isActive = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isActive
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.6)
+            : Colors.transparent,
+      ),
+      child: IconButton(
+        icon: Icon(icon,
+          color: isActive
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
+          size: size),
+        onPressed: onTap,
+      ),
     );
   }
 }
