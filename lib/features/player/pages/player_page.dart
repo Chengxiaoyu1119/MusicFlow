@@ -24,13 +24,41 @@ class PlayerPage extends ConsumerStatefulWidget {
   ConsumerState<PlayerPage> createState() => _PlayerPageState();
 }
 
-class _PlayerPageState extends ConsumerState<PlayerPage> {
+class _PlayerPageState extends ConsumerState<PlayerPage>
+    with SingleTickerProviderStateMixin {
   bool _showLyrics = false;
+  bool _showVolume = false;
+  late final AnimationController _rotationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    );
+  }
+
+  void _updateRotation(bool isPlaying) {
+    if (isPlaying) {
+      _rotationController.repeat();
+    } else {
+      _rotationController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final music = ref.watch(currentMusicProvider).valueOrNull;
     final isPlaying = ref.watch(isPlayingProvider).valueOrNull ?? false;
+    // Sync rotation animation with playback state
+    _updateRotation(isPlaying);
     final position = ref.watch(playerPositionProvider).valueOrNull ?? Duration.zero;
     final duration = ref.watch(playerDurationProvider).valueOrNull ?? Duration.zero;
     final repeatMode = ref.watch(repeatModeProvider).valueOrNull ?? 0;
@@ -123,10 +151,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         children: [
                           if (DesktopLyricsOverlay.isSupported)
                             IconButton(
-                              icon: const Icon(Icons.lyrics_outlined),
-                              onPressed: () => context.push('/lyrics-overlay'),
-                              tooltip: 'Desktop Lyrics',
+                              icon: Icon(
+                                _showLyrics ? Icons.lyrics_rounded : Icons.lyrics_outlined,
+                                color: _showLyrics ? theme.colorScheme.primary : null,
+                              ),
+                              onPressed: () => setState(() => _showLyrics = !_showLyrics),
+                              tooltip: 'Toggle Lyrics',
                             ),
+                          IconButton(
+                            icon: Icon(
+                              _showVolume ? Icons.volume_up_rounded : Icons.volume_down_rounded,
+                            ),
+                            onPressed: () => setState(() => _showVolume = !_showVolume),
+                            tooltip: 'Volume',
+                          ),
                           IconButton(
                             icon: const Icon(Icons.queue_music_rounded),
                             onPressed: () => _showQueue(context, queue, handler),
@@ -284,6 +322,26 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                     ],
                   ),
                 ),
+
+                // Volume slider (expandable)
+                if (_showVolume)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.volume_down_rounded, size: 16,
+                          color: theme.colorScheme.onSurfaceVariant),
+                        Expanded(
+                          child: Slider(
+                            value: handler.volume,
+                            onChanged: (v) => handler.setVolume(v),
+                          ),
+                        ),
+                        Icon(Icons.volume_up_rounded, size: 16,
+                          color: theme.colorScheme.onSurfaceVariant),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -296,18 +354,21 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 48),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: music.artworkUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: music.artworkUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => _placeholderArt(theme),
-                    errorWidget: (_, __, ___) => _placeholderArt(theme),
-                  )
-                : _placeholderArt(theme),
+        child: RotationTransition(
+          turns: _rotationController,
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: music.artworkUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: music.artworkUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _placeholderArt(theme),
+                      errorWidget: (_, __, ___) => _placeholderArt(theme),
+                    )
+                  : _placeholderArt(theme),
+            ),
           ),
         ),
       ),
