@@ -1,43 +1,29 @@
-name: Deploy Web to GitHub Pages
+name: Deploy Web
 
 on:
+  workflow_dispatch:  # 仅手动触发
   push:
-    branches: [main, master]
+    branches: [main]
 
 jobs:
   deploy:
-    name: Deploy Web
+    if: false  # 禁用直到需要部署
     runs-on: ubuntu-latest
     permissions:
       pages: write
       id-token: write
-
     environment:
       name: github-pages
       url: \${{ steps.deployment.outputs.page_url }}
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44'
           channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build for web
-        run: flutter build web --release --base-href /melodyflow/
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - run: flutter pub get
+      - run: flutter build web --release
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4
