@@ -16,6 +16,7 @@ class MiniPlayer extends ConsumerWidget {
     final position = ref.watch(playerPositionProvider).valueOrNull ?? Duration.zero;
     final duration = ref.watch(playerDurationProvider).valueOrNull ?? Duration.zero;
     final handler = ref.watch(audioHandlerProvider);
+    final theme = Theme.of(context);
 
     if (music == null) return const SizedBox.shrink();
 
@@ -28,12 +29,9 @@ class MiniPlayer extends ConsumerWidget {
       child: Container(
         height: 64,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: theme.colorScheme.surfaceContainerHighest,
           border: Border(
-            top: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              width: 0.5,
-            ),
+            top: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
           ),
         ),
         child: Column(
@@ -42,7 +40,7 @@ class MiniPlayer extends ConsumerWidget {
             LinearProgressIndicator(
               value: progress,
               backgroundColor: Colors.transparent,
-              color: Theme.of(context).colorScheme.primary,
+              color: theme.colorScheme.primary,
               minHeight: 2,
             ),
             Expanded(
@@ -50,13 +48,24 @@ class MiniPlayer extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
                   children: [
-                    // Album art
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: _ArtworkImage(music: music),
+                    // Album art with shadow
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: SizedBox(
+                          width: 46, height: 46,
+                          child: _ArtworkImage(music: music),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -66,35 +75,30 @@ class MiniPlayer extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            music.title,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            music.artist,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          Text(music.title,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(music.artist,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
                     // Controls
                     IconButton(
                       icon: Icon(
-                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        size: 28,
+                        isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 32,
                       ),
                       onPressed: () => handler.togglePlayPause(),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.skip_next_rounded, size: 28),
+                      icon: Icon(Icons.skip_next_rounded,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        size: 26),
                       onPressed: () => handler.skipToNext(),
                     ),
                   ],
@@ -118,24 +122,20 @@ class _ArtworkImage extends StatelessWidget {
     if (music.artworkUrl != null) {
       return CachedNetworkImage(
         imageUrl: music.artworkUrl!,
-        placeholder: (_, __) => Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        ),
-        errorWidget: (_, __, ___) => _placeholder(context),
         fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => _placeholder(context),
       );
     }
     return _placeholder(context);
   }
 
   Widget _placeholder(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Icon(
-        Icons.music_note_rounded,
-        color: Theme.of(context).colorScheme.onPrimaryContainer,
-        size: 24,
-      ),
+      color: theme.colorScheme.primaryContainer,
+      child: Icon(Icons.music_note_rounded,
+        color: theme.colorScheme.onPrimaryContainer,
+        size: 24),
     );
   }
 }
