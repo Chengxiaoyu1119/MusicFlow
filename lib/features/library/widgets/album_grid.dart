@@ -34,7 +34,7 @@ class AlbumGrid extends ConsumerWidget {
             Icon(Icons.album_rounded, size: 64,
               color: theme.colorScheme.primary.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
-            Text('No albums found', style: theme.textTheme.titleMedium),
+            Text('暂无专辑', style: theme.textTheme.titleMedium),
           ],
         ),
       );

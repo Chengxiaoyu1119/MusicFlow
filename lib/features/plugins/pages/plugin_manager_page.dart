@@ -18,12 +18,12 @@ class PluginManagerPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Plugins'),
+        title: const Text('插件'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
             onPressed: () => _showInstallDialog(context, manager),
-            tooltip: 'Install Plugin',
+            tooltip: '安装插件',
           ),
         ],
       ),
@@ -58,7 +58,7 @@ class PluginManagerPage extends ConsumerWidget {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () => _showInstallDialog(context, manager),
-                      child: const Text('Install from URL'),
+                      child: const Text('从 URL 安装'),
                     ),
                   ],
                 ),
@@ -86,7 +86,7 @@ class PluginManagerPage extends ConsumerWidget {
                   children: [
                     Icon(Icons.info_outline_rounded, size: 18, color: theme.colorScheme.primary),
                     const SizedBox(width: 8),
-                    Text('Plugin System',
+                    Text('插件系统',
                       style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
                   ],
                 ),
@@ -113,11 +113,11 @@ class PluginManagerPage extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Install Plugin'),
+        title: const Text('安装插件'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter the URL of the plugin JS file.'),
+            const Text('输入插件 JS 文件的 URL'),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
@@ -133,7 +133,7 @@ class PluginManagerPage extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text('取消'),
           ),
           FilledButton(
             onPressed: () {
@@ -142,7 +142,7 @@ class PluginManagerPage extends ConsumerWidget {
                 Navigator.of(context).pop();
               }
             },
-            child: const Text('Install'),
+            child: const Text('安装'),
           ),
         ],
       ),
