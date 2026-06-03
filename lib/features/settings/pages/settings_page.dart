@@ -109,6 +109,22 @@ class SettingsPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => context.push('/stats'),
           ),
+          _SettingsTile(
+            icon: Icons.lyrics_outlined,
+            title: 'Desktop Lyrics',
+            subtitle: 'Font, colors, opacity settings',
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/lyrics-settings'),
+          ),
+          _SettingsTile(
+            icon: Icons.swap_horiz_rounded,
+            title: 'Crossfade',
+            subtitle: 'Crossfade between tracks (coming soon)',
+            trailing: Switch(
+              value: false,
+              onChanged: (_) {},
+            ),
+          ),
           const Divider(),
 
           // Storage

@@ -6,6 +6,8 @@ import '../../../audio/audio_provider.dart';
 import '../../../data/models/music.dart';
 import '../../../data/repository/library_service.dart';
 import '../../../shared/widgets/music_tile.dart';
+import '../widgets/album_grid.dart';
+import '../../playlist/services/smart_playlist_service.dart';
 
 class LibraryPage extends ConsumerStatefulWidget {
   const LibraryPage({super.key});
@@ -15,6 +17,8 @@ class LibraryPage extends ConsumerStatefulWidget {
 }
 
 class _LibraryPageState extends ConsumerState<LibraryPage> {
+  int _viewMode = 0; // 0=list, 1=album, 2=smart
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +31,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   Widget build(BuildContext context) {
     final library = ref.watch(libraryServiceProvider);
     final localMusic = library.localMusic;
+    final smartPlaylists = ref.watch(smartPlaylistProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -78,10 +83,81 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           ),
         ],
       ),
-      body: localMusic.isEmpty
-          ? _EmptyLibrary(onPickFiles: () => library.pickMusicFiles())
-          : _MusicList(musicList: localMusic),
+      body: Column(
+        children: [
+          // View mode toggle
+          if (localMusic.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment(value: 0, label: Text('Tracks'), icon: Icon(Icons.music_note_rounded)),
+                  ButtonSegment(value: 1, label: Text('Albums'), icon: Icon(Icons.album_rounded)),
+                  ButtonSegment(value: 2, label: Text('Smart'), icon: Icon(Icons.auto_awesome_rounded)),
+                ],
+                selected: {_viewMode},
+                onSelectionChanged: (v) => setState(() => _viewMode = v.first),
+              ),
+            ),
+          Expanded(
+            child: localMusic.isEmpty
+                ? _EmptyLibrary(onPickFiles: () => library.pickMusicFiles())
+                : _viewMode == 1
+                    ? const AlbumGrid()
+                    : _viewMode == 2
+                        ? _SmartPlaylistsView(playlists: smartPlaylists)
+                        : _MusicList(musicList: localMusic),
+          ),
+        ],
+      ),
     );
+  }
+}
+
+class _SmartPlaylistsView extends ConsumerWidget {
+  final List<SmartPlaylist> playlists;
+  const _SmartPlaylistsView({required this.playlists});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      children: playlists.map((playlist) {
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Icon(
+                _iconForType(playlist.type),
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+            title: Text(playlist.type.displayName,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text('${playlist.tracks.length} tracks · ${playlist.type.description}'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () {
+              if (playlist.tracks.isNotEmpty) {
+                ref.read(audioHandlerProvider).setQueue(playlist.tracks);
+              }
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  IconData _iconForType(SmartPlaylistType type) {
+    switch (type) {
+      case SmartPlaylistType.mostPlayed: return Icons.trending_up_rounded;
+      case SmartPlaylistType.recentlyPlayed: return Icons.history_rounded;
+      case SmartPlaylistType.recentlyAdded: return Icons.fiber_new_rounded;
+      case SmartPlaylistType.favorites: return Icons.favorite_rounded;
+      case SmartPlaylistType.frequentArtists: return Icons.people_rounded;
+      case SmartPlaylistType.recentlyFavorited: return Icons.favorite_border_rounded;
+    }
   }
 }
 

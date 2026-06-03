@@ -8,6 +8,7 @@ import '../../../audio/audio_provider.dart';
 import '../../../audio/lyrics_provider.dart';
 import '../../../data/models/lyrics_model.dart';
 import '../../../data/models/music.dart';
+import '../../../data/repository/favorites_provider.dart';
 import '../../../shared/widgets/music_tile.dart';
 import '../widgets/lyrics_widget.dart';
 import '../widgets/spectrum_widget.dart';
@@ -188,9 +189,18 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.favorite_outline_rounded),
-                        onPressed: () {},
+                      Consumer(
+                        builder: (context, watchRef, _) {
+                          final favs = watchRef.watch(favoritesProvider);
+                          final isFav = favs.contains(music.id);
+                          return IconButton(
+                            icon: Icon(
+                              isFav ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+                              color: isFav ? theme.colorScheme.primary : null,
+                            ),
+                            onPressed: () => watchRef.read(favoritesProvider.notifier).toggle(music.id),
+                          );
+                        },
                       ),
                     ],
                   ),
