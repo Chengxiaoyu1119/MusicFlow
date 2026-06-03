@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'audio/audio_provider.dart';
 import 'core/constants/platform_helper.dart';
@@ -202,52 +203,176 @@ class _AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hasMusic = ref.watch(currentMusicProvider).valueOrNull != null;
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 900;
+
+    return isDesktop ? _DesktopShell(child: child) : _MobileShell(child: child, hasMusic: hasMusic, theme: theme);
+  }
+}
+
+class _DesktopShell extends StatelessWidget {
+  final Widget child;
+  const _DesktopShell({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final location = GoRouterState.of(context).uri.toString();
+
+    int currentIndex = 0;
+    if (location.startsWith('/library')) currentIndex = 1;
+    if (location.startsWith('/search')) currentIndex = 2;
+    if (location.startsWith('/plugins')) currentIndex = 3;
+    if (location.startsWith('/settings')) currentIndex = 4;
+
+    final items = [
+      (icon: Icons.explore_rounded, label: '发现', route: '/'),
+      (icon: Icons.library_music_rounded, label: '音乐库', route: '/library'),
+      (icon: Icons.search_rounded, label: '搜索', route: '/search'),
+      (icon: Icons.extension_rounded, label: '插件', route: '/plugins'),
+      (icon: Icons.settings_rounded, label: '设置', route: '/settings'),
+    ];
 
     return Scaffold(
-      body: Stack(
+      body: Row(
         children: [
-          // Main content
-          Padding(
-            padding: EdgeInsets.only(
-              bottom: 64 + (hasMusic ? 64 : 0),
+          // Side navigation rail
+          Container(
+            width: 72,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              border: Border(
+                right: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
+              ),
             ),
-            child: child,
-          ),
-          // Mini player (floating above bottom nav)
-          if (hasMusic)
-            Positioned(
-              bottom: 64,
-              left: 0,
-              right: 0,
-              child: const MiniPlayer(),
-            ),
-          // Bottom nav with glass effect
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: ClipRRect(
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface.withValues(alpha: 0.85),
-                    border: Border(
-                      top: BorderSide(
-                        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  // Logo
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.music_note_rounded,
+                      color: theme.colorScheme.primary, size: 22),
+                  ),
+                  const SizedBox(height: 24),
+                  // Navigation items
+                  ...List.generate(items.length, (i) {
+                    final isSelected = i == currentIndex;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+                      child: Tooltip(
+                        message: items[i].label,
+                        child: GestureDetector(
+                          onTap: () => context.go(items[i].route),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? theme.colorScheme.primaryContainer : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(items[i].icon,
+                                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                                  size: 22),
+                                const SizedBox(height: 4),
+                                Text(items[i].label,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  )),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const Spacer(),
+                  // Mini player on desktop (compact)
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: SizedBox(
+                      width: 44, height: 44,
+                      child: Consumer(
+                        builder: (context, watchRef, _) {
+                          final music = watchRef.watch(currentMusicProvider).valueOrNull;
+                          return GestureDetector(
+                            onTap: () => context.push('/player'),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: music != null
+                                  ? (music.artworkUrl != null
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: CachedNetworkImage(
+                                            imageUrl: music.artworkUrl!, fit: BoxFit.cover))
+                                      : Icon(Icons.music_note_rounded, size: 20))
+                                  : Icon(Icons.music_note_outlined, size: 20,
+                                      color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
-                  child: SafeArea(
-                    top: false,
-                    child: _BottomNavContent(),
-                  ),
-                ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
           ),
+          // Main content
+          Expanded(
+            child: child,
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _MobileShell extends StatelessWidget {
+  final Widget child;
+  final bool hasMusic;
+  final ThemeData theme;
+  const _MobileShell({required this.child, required this.hasMusic, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 64 + (hasMusic ? 64 : 0)),
+          child: child,
+        ),
+        if (hasMusic)
+          Positioned(bottom: 64, left: 0, right: 0, child: const MiniPlayer()),
+        Positioned(
+          bottom: 0, left: 0, right: 0,
+          child: ClipRRect(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface.withValues(alpha: 0.85),
+                  border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3))),
+                ),
+                child: SafeArea(top: false, child: _BottomNavContent()),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

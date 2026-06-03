@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../audio/audio_provider.dart';
 import '../../../data/models/music.dart';
@@ -101,11 +102,15 @@ class AlbumGrid extends ConsumerWidget {
   }
 
   Widget _placeholderAlbum(ThemeData theme) {
-    return Container(
-      color: theme.colorScheme.primaryContainer,
-      child: Center(
-        child: Icon(Icons.album_rounded, size: 48,
-          color: theme.colorScheme.onPrimaryContainer),
+    return Shimmer.fromColors(
+      baseColor: theme.colorScheme.surfaceContainerHighest,
+      highlightColor: theme.colorScheme.surfaceContainerLow,
+      child: Container(
+        color: Colors.white,
+        child: Center(
+          child: Icon(Icons.album_rounded, size: 48,
+            color: Colors.white.withValues(alpha: 0.3)),
+        ),
       ),
     );
   }
