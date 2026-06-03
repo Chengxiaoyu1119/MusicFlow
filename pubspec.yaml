@@ -1,0 +1,68 @@
+name: musicflow
+description: "A beautiful cross-platform music player with plugin ecosystem."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Audio Engine
+  just_audio: ^0.9.42
+  audio_service: ^0.18.14
+  audio_session: ^0.1.21
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+
+  # Navigation
+  go_router: ^14.8.1
+
+  # Local Storage
+  shared_preferences: ^2.3.4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Networking
+  dio: ^5.7.0
+
+  # Utilities
+  rxdart: ^0.28.0
+  equatable: ^2.0.7
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
+  file_picker: ^8.1.7
+  uuid: ^4.5.1
+  intl: ^0.19.0
+  collection: ^1.18.0
+
+  # UI
+  palette_generator: ^0.3.3+4
+  cached_network_image: ^3.4.1
+  lottie: ^3.3.1
+  transparent_image: ^2.0.1
+  shimmer: ^3.0.0
+  http: ^1.6.0
+  flutter_js: ^0.8.7
+  hotkey_manager: ^0.2.3
+  tray_manager: ^0.5.2
+  window_manager: ^0.5.1
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+  encrypt: ^5.0.3
+  crypto: ^3.0.7
+  open_file: ^3.5.11
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/lottie/
