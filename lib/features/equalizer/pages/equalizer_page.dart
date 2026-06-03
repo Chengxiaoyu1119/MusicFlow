@@ -21,12 +21,12 @@ class EqualizerPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Equalizer'),
+        title: const Text('均衡器'),
         actions: [
           IconButton(
             icon: const Icon(Icons.tune_rounded),
             onPressed: () => _showPresets(context, eqService, eqState),
-            tooltip: 'Presets',
+            tooltip: '预设',
           ),
         ],
       ),
@@ -37,7 +37,7 @@ class EqualizerPage extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                const Text('Enable Equalizer',
+                const Text('启用均衡器',
                   style: TextStyle(fontWeight: FontWeight.w600)),
                 const Spacer(),
                 Switch(
@@ -110,7 +110,7 @@ class EqualizerPage extends ConsumerWidget {
             child: OutlinedButton.icon(
               onPressed: eqState.isEnabled ? () => eqService.reset() : null,
               icon: const Icon(Icons.restart_alt_rounded),
-              label: const Text('Reset to Flat'),
+              label: const Text('重置为平坦'),
             ),
           ),
         ],
@@ -128,7 +128,7 @@ class EqualizerPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Presets',
+              const Text('预设',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               Wrap(

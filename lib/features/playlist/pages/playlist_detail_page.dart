@@ -27,8 +27,8 @@ class PlaylistDetailPage extends ConsumerWidget {
 
     if (playlist == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Playlist')),
-        body: const Center(child: Text('Playlist not found')),
+        appBar: AppBar(title: const Text('歌单')),
+        body: const Center(child: Text('歌单未找到')),
       );
     }
 
@@ -58,12 +58,12 @@ class PlaylistDetailPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'This playlist is empty',
+                    '这个歌单是空的',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Add songs from your library',
+                    '从音乐库添加歌曲',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),

@@ -19,13 +19,13 @@ class DownloadsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Downloads'),
+        title: const Text('下载'),
         actions: [
           if (completed.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_rounded),
               onPressed: () => manager.clearCompleted(),
-              tooltip: 'Clear completed',
+              tooltip: '清空已完成',
             ),
         ],
       ),
@@ -37,10 +37,10 @@ class DownloadsPage extends ConsumerWidget {
                   Icon(Icons.download_outlined, size: 64,
                     color: theme.colorScheme.primary.withValues(alpha: 0.3)),
                   const SizedBox(height: 16),
-                  Text('No downloads yet',
+                  Text('暂无下载',
                     style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  Text('Download songs from search results',
+                  Text('从搜索结果下载歌曲',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant)),
                 ],
@@ -149,9 +149,9 @@ class _DownloadTile extends StatelessWidget {
       case DownloadState.downloading:
         return 'Downloading... ${(task.progress * 100).toStringAsFixed(0)}%';
       case DownloadState.completed:
-        return task.filePath?.split('/').last ?? 'Completed';
+        return task.filePath?.split('/').last ?? '已完成';
       case DownloadState.failed:
-        return task.error ?? 'Failed';
+        return task.error ?? '失败';
       default:
         return '';
     }

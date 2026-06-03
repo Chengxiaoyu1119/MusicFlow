@@ -78,7 +78,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
               Icon(Icons.music_note_outlined, size: 80,
                 color: theme.colorScheme.primary.withValues(alpha: 0.3)),
               const SizedBox(height: 16),
-              Text('No music playing', style: theme.textTheme.titleMedium),
+              Text('暂无播放', style: theme.textTheme.titleMedium),
             ],
           ),
         ),
@@ -144,7 +144,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
                             ),
                         ],
                       ),
-                      Text('Now Playing',
+                      Text('正在播放',
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant)),
                       Row(
@@ -156,14 +156,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
                                 color: _showLyrics ? theme.colorScheme.primary : null,
                               ),
                               onPressed: () => setState(() => _showLyrics = !_showLyrics),
-                              tooltip: 'Toggle Lyrics',
+                              tooltip: '切换歌词',
                             ),
                           IconButton(
                             icon: Icon(
                               _showVolume ? Icons.volume_up_rounded : Icons.volume_down_rounded,
                             ),
                             onPressed: () => setState(() => _showVolume = !_showVolume),
-                            tooltip: 'Volume',
+                            tooltip: '音量',
                           ),
                           IconButton(
                             icon: const Icon(Icons.queue_music_rounded),
@@ -430,11 +430,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Up Next (${queue.length})',
+                  Text('即将播放 (${queue.length})',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold)),
                   TextButton(onPressed: () => handler.clearQueue(),
-                    child: const Text('Clear')),
+                    child: const Text('清空')),
                 ],
               ),
             ),

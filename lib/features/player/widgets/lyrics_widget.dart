@@ -70,7 +70,7 @@ class _LyricsWidgetState extends State<LyricsWidget> {
             ),
             const SizedBox(height: 12),
             Text(
-              'No lyrics available',
+              '暂无歌词',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

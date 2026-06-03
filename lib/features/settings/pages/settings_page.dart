@@ -65,7 +65,7 @@ class SettingsPage extends ConsumerWidget {
           ),
           _SettingsTile(
             icon: Icons.color_lens_rounded,
-            title: 'Accent Color',
+            title: '强调色',
             subtitle: 'Customize app colors',
             trailing: Container(
               width: 24, height: 24,
@@ -83,7 +83,7 @@ class SettingsPage extends ConsumerWidget {
           _SectionHeader(title: '工具'),
           _SettingsTile(
             icon: Icons.timer_rounded,
-            title: 'Sleep Timer',
+            title: '睡眠定时器',
             subtitle: 'Auto-pause playback',
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showSleepTimerDialog(context, ref),
@@ -218,7 +218,7 @@ class SettingsPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Accent Color', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('强调色', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
@@ -266,9 +266,9 @@ class SettingsPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Sleep Timer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('睡眠定时器', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text('Playback will pause automatically after the set time.',
+              const Text('到达设定时间后自动暂停播放',
                 style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 16),
 
@@ -279,7 +279,7 @@ class SettingsPage extends ConsumerWidget {
                     children: [
                       const Icon(Icons.timer_rounded, size: 20),
                       const SizedBox(width: 8),
-                      Text('Running: ${timerService.formattedRemaining}',
+                      Text('运行中: ${timerService.formattedRemaining}',
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                       const Spacer(),
                       TextButton(
@@ -287,7 +287,7 @@ class SettingsPage extends ConsumerWidget {
                           timerService.cancel();
                           Navigator.pop(context);
                         },
-                        child: const Text('Cancel'),
+                        child: const Text('取消'),
                       ),
                     ],
                   ),
@@ -298,7 +298,7 @@ class SettingsPage extends ConsumerWidget {
                 runSpacing: 8,
                 children: SleepTimerService.presetMinutes.map((minutes) {
                   return ActionChip(
-                    label: Text('$minutes min'),
+                    label: Text('$minutes 分钟'),
                     onPressed: () {
                       timerService.start(Duration(minutes: minutes));
                       timerService.savePreset(Duration(minutes: minutes));
@@ -318,7 +318,7 @@ class SettingsPage extends ConsumerWidget {
     final result = await FilePicker.platform.getDirectoryPath();
     if (result != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Selected: $result')),
+        SnackBar(content: Text('已选择: $result')),
       );
     }
   }
@@ -328,7 +328,7 @@ class SettingsPage extends ConsumerWidget {
     await storage.clearCache();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cache cleared')),
+        const SnackBar(content: Text('缓存已清除')),
       );
     }
   }

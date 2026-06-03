@@ -152,7 +152,7 @@ class _NoLyrics extends StatelessWidget {
           Text(musicName!,
             style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Text('No lyrics available',
+        Text('暂无歌词',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurfaceVariant)),
       ],

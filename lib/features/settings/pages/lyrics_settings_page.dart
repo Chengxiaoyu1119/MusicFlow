@@ -15,7 +15,7 @@ class LyricsSettingsPage extends ConsumerWidget {
     final accent = ref.watch(accentColorProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Desktop Lyrics')),
+      appBar: AppBar(title: const Text('桌面歌词')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -28,7 +28,7 @@ class LyricsSettingsPage extends ConsumerWidget {
             ),
             child: Center(
               child: Text(
-                'Sample Lyrics Line',
+                '示例歌词文字',
                 style: TextStyle(
                   fontSize: settings.fontSize.clamp(16, 36).toDouble(),
                   color: settings.activeColor,
@@ -39,7 +39,7 @@ class LyricsSettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Center(
-            child: Text('Past line',
+            child: Text('上一句歌词',
               style: TextStyle(
                 fontSize: (settings.fontSize.clamp(12, 24)).toDouble(),
                 color: settings.textColor.withValues(alpha: 0.4),
@@ -49,7 +49,7 @@ class LyricsSettingsPage extends ConsumerWidget {
           const SizedBox(height: 32),
 
           // Font size
-          Text('Font Size: ${settings.fontSize.toStringAsFixed(0)}',
+          Text('字体大小: ${settings.fontSize.toStringAsFixed(0)}',
             style: theme.textTheme.titleSmall),
           Slider(
             value: settings.fontSize,
@@ -60,7 +60,7 @@ class LyricsSettingsPage extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Active color
-          Text('Active Line Color',
+          Text('当前行颜色',
             style: theme.textTheme.titleSmall),
           const SizedBox(height: 8),
           Wrap(
@@ -92,7 +92,7 @@ class LyricsSettingsPage extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Text color
-          Text('Text Color',
+          Text('文字颜色',
             style: theme.textTheme.titleSmall),
           const SizedBox(height: 8),
           Wrap(
@@ -123,7 +123,7 @@ class LyricsSettingsPage extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Background opacity
-          Text('Background Opacity: ${(settings.backgroundOpacity * 100).toStringAsFixed(0)}%',
+          Text('背景不透明度: ${(settings.backgroundOpacity * 100).toStringAsFixed(0)}%',
             style: theme.textTheme.titleSmall),
           Slider(
             value: settings.backgroundOpacity,
@@ -135,8 +135,8 @@ class LyricsSettingsPage extends ConsumerWidget {
 
           // Pause transparent toggle
           SwitchListTile(
-            title: const Text('Raise transparency when paused'),
-            subtitle: const Text('Make lyrics more transparent while playback is paused'),
+            title: const Text('暂停时提高透明度'),
+            subtitle: const Text('暂停时歌词更透明'),
             value: settings.pauseTransparent,
             onChanged: (v) => notifier.setPauseTransparent(v),
           ),

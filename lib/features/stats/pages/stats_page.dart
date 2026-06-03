@@ -19,7 +19,7 @@ class StatsPage extends ConsumerWidget {
     final uniqueTracks = statsService.uniqueTracks;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Play Statistics')),
+      appBar: AppBar(title: const Text('播放统计')),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
@@ -28,14 +28,14 @@ class StatsPage extends ConsumerWidget {
             children: [
               _StatCard(
                 icon: Icons.play_circle_rounded,
-                label: 'Total Plays',
+                label: '总播放',
                 value: '$totalPlays',
                 color: theme.colorScheme.primary,
               ),
               const SizedBox(width: 12),
               _StatCard(
                 icon: Icons.timer_rounded,
-                label: 'Listening Time',
+                label: '听歌时长',
                 value: _formatDuration(totalTime),
                 color: theme.colorScheme.tertiary,
               ),
@@ -46,7 +46,7 @@ class StatsPage extends ConsumerWidget {
             children: [
               _StatCard(
                 icon: Icons.music_note_rounded,
-                label: 'Unique Tracks',
+                label: '不同曲目',
                 value: '$uniqueTracks',
                 color: theme.colorScheme.secondary,
               ),
@@ -64,7 +64,7 @@ class StatsPage extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Top tracks
-          Text('Most Played',
+          Text('播放最多',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
@@ -78,7 +78,7 @@ class StatsPage extends ConsumerWidget {
                     Icon(Icons.bar_chart_rounded, size: 48,
                       color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
                     const SizedBox(height: 8),
-                    Text('No data yet. Start listening!',
+                    Text('暂无数据，开始听歌吧！',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant)),
                   ],
