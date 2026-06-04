@@ -15,6 +15,7 @@ import '../widgets/lyrics_widget.dart';
 import '../widgets/player_gesture_handler.dart';
 import '../widgets/desktop_lyrics_overlay.dart';
 import '../widgets/vinyl_disc.dart';
+import '../widgets/stylus_needle.dart';
 import '../widgets/particle_bg.dart';
 import '../services/sleep_timer_service.dart';
 
@@ -417,24 +418,37 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
   }
 
-  // ==================== Album Art (Vinyl) ====================
+  // ==================== Album Art (Vinyl + Stylus) ====================
   Widget _buildAlbumArt(Music music, ThemeData theme, bool isPlaying) {
     final screenW = MediaQuery.of(context).size.width;
     final discSize = screenW > 800 ? 320.0 : (screenW - 80).clamp(200.0, 320.0);
 
     return Center(
-      child: VinylDisc(
-        size: discSize,
-        isPlaying: isPlaying,
-        vinylColor: _dominantColor,
-        albumArt: ClipOval(
-          child: music.artworkUrl != null
-              ? CachedNetworkImage(
-                  imageUrl: music.artworkUrl!, fit: BoxFit.cover,
-                  placeholder: (_, __) => _placeholderArt(theme),
-                  errorWidget: (_, __, ___) => _placeholderArt(theme),
-                )
-              : _placeholderArt(theme),
+      child: SizedBox(
+        width: discSize,
+        height: discSize,
+        child: Stack(
+          children: [
+            VinylDisc(
+              size: discSize,
+              isPlaying: isPlaying,
+              vinylColor: _dominantColor,
+              albumArt: ClipOval(
+                child: music.artworkUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: music.artworkUrl!, fit: BoxFit.cover,
+                        placeholder: (_, __) => _placeholderArt(theme),
+                        errorWidget: (_, __, ___) => _placeholderArt(theme),
+                      )
+                    : _placeholderArt(theme),
+              ),
+            ),
+            // Stylus needle overlay
+            StylusNeedle(
+              isPlaying: isPlaying,
+              size: discSize,
+            ),
+          ],
         ),
       ),
     );
