@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:rxdart/rxdart.dart';
@@ -126,18 +127,22 @@ class MusicAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Initialize the audio handler (call once)
   Future<void> init() async {
     if (_isInitialized) return;
-    // audio_service does not support web — skip init on web
-    if (!PlatformHelper.isWeb) {
-      await AudioService.init(
-        builder: () => this,
-        config: const AudioServiceConfig(
-          androidNotificationChannelId: 'com.musicplayer.channel.audio',
-          androidNotificationChannelName: 'Music Playback',
-          androidNotificationOngoing: true,
-          androidStopForegroundOnPause: true,
-          androidNotificationIcon: 'mipmap/ic_launcher',
-        ),
-      );
+    // audio_service does not support web/macOS fully — skip on those
+    if (!PlatformHelper.isWeb && !PlatformHelper.isMacOS) {
+      try {
+        await AudioService.init(
+          builder: () => this,
+          config: const AudioServiceConfig(
+            androidNotificationChannelId: 'com.musicplayer.channel.audio',
+            androidNotificationChannelName: 'Music Playback',
+            androidNotificationOngoing: true,
+            androidStopForegroundOnPause: true,
+            androidNotificationIcon: 'mipmap/ic_launcher',
+          ),
+        );
+      } catch (e) {
+        debugPrint('AudioService init failed (non-fatal): $e');
+      }
     }
     _isInitialized = true;
   }

@@ -10,7 +10,6 @@ import 'core/constants/platform_helper.dart';
 import 'core/theme/app_theme.dart';
 import 'data/database/hive_service.dart';
 import 'data/repository/stats_service.dart';
-import 'features/desktop/services/global_shortcuts_service.dart';
 import 'features/desktop/services/http_api_service.dart';
 import 'shared/widgets/mini_player.dart';
 import 'features/library/pages/library_page.dart';
@@ -47,12 +46,12 @@ class _MusicPlayerAppState extends ConsumerState<MusicPlayerApp> {
       await handler.init();
 
       // Initialize desktop services (if supported)
-      if (GlobalShortcutsService.isSupported) {
-        await GlobalShortcutsService().init(handler);
-      }
       if (PlatformHelper.isDesktop) {
-        final apiService = HttpApiService(handler);
-        await apiService.start();
+        // Only start HTTP API, skip other services for now
+        try {
+          final apiService = HttpApiService(handler);
+          await apiService.start();
+        } catch (_) {}
       }
     });
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:morphing_glow/morphing_glow.dart';
 
 import '../../../api/auth_service.dart';
 import '../../../data/repository/sample_data.dart';
@@ -30,11 +29,8 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
             floating: true,
             title: Row(
               children: [
-                MorphingGlow(
-                  glowColors: [theme.colorScheme.primary],
-                  child: Icon(Icons.music_note_rounded,
-                    color: theme.colorScheme.primary, size: 28),
-                ),
+                Icon(Icons.music_note_rounded,
+                  color: theme.colorScheme.primary, size: 28),
                 const SizedBox(width: 8),
                 Text('MusicFlow',
                   style: theme.textTheme.titleLarge?.copyWith(
@@ -132,7 +128,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
           // ===== 推荐歌单 =====
           SliverPadding(
