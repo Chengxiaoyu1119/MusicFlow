@@ -48,6 +48,22 @@ jobs:
           name: MusicFlow-Android
           path: build/app/outputs/flutter-apk/app-release.apk
 
+  build-windows:
+    name: 🪟 Windows
+    runs-on: windows-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MusicFlow-Windows
+          path: build/windows/runner/Release/
+
   build-macos:
     name: 🍎 macOS
     runs-on: macos-latest
