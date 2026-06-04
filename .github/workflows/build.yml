@@ -68,6 +68,36 @@ jobs:
           name: MusicFlow-Windows
           path: build/windows/runner/Release/
 
+  build-ios:
+    name: 📱 iOS IPA
+    runs-on: macos-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      - name: Install certificate
+        if: ${{ secrets.IOS_P12_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.IOS_P12_BASE64 }}" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p temp123 /tmp/build.keychain
+          security unlock-keychain -p temp123 /tmp/build.keychain
+          security import /tmp/cert.p12 -k /tmp/build.keychain -P "${{ secrets.IOS_P12_PASSWORD }}" -A
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp123 /tmp/build.keychain
+          security list-keychain -s /tmp/build.keychain
+      - name: Install provisioning profile
+        if: ${{ secrets.IOS_MOBILE_PROVISION != '' }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.IOS_MOBILE_PROVISION }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+      - run: flutter build ipa --release --export-options-plist=ios/exportOptions.plist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MusicFlow-iOS
+          path: build/ios/ipa/music_player.ipa
+
   build-macos:
     name: 🍎 macOS
     runs-on: macos-latest
