@@ -186,7 +186,23 @@ class _MusicPlayerAppState extends ConsumerState<MusicPlayerApp> {
         ),
         GoRoute(
           path: '/player',
-          builder: (context, state) => const PlayerPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            child: const PlayerPage(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                  reverseCurve: Curves.easeInCubic,
+                )),
+                child: child,
+              );
+            },
+          ),
         ),
       ],
     );

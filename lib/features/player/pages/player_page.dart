@@ -14,6 +14,8 @@ import '../../../shared/widgets/music_tile.dart';
 import '../widgets/lyrics_widget.dart';
 import '../widgets/player_gesture_handler.dart';
 import '../widgets/desktop_lyrics_overlay.dart';
+import '../widgets/vinyl_disc.dart';
+import '../widgets/particle_bg.dart';
 import '../services/sleep_timer_service.dart';
 
 class PlayerPage extends ConsumerStatefulWidget {
@@ -88,6 +90,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     return Scaffold(
       body: Stack(
         children: [
+          // Particle effects
+          Positioned.fill(
+            child: ParticleBg(
+              color: _dominantColor,
+              isActive: isPlaying,
+            ),
+          ),
           // Dynamic gradient background
           Positioned.fill(
             child: AnimatedContainer(
@@ -408,40 +417,24 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
   }
 
-  // ==================== Album Art ====================
+  // ==================== Album Art (Vinyl) ====================
   Widget _buildAlbumArt(Music music, ThemeData theme, bool isPlaying) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 48),
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: _dominantColor.withValues(alpha: 0.3),
-                blurRadius: 40,
-                spreadRadius: 8,
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                music.artworkUrl != null
-                    ? CachedNetworkImage(imageUrl: music.artworkUrl!, fit: BoxFit.cover)
-                    : _placeholderArt(theme),
-                if (!isPlaying)
-                  Container(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    child: const Icon(Icons.play_arrow_rounded,
-                      color: Colors.white, size: 56),
-                  ),
-              ],
-            ),
-          ),
+    final screenW = MediaQuery.of(context).size.width;
+    final discSize = screenW > 800 ? 320.0 : (screenW - 80).clamp(200.0, 320.0);
+
+    return Center(
+      child: VinylDisc(
+        size: discSize,
+        isPlaying: isPlaying,
+        vinylColor: _dominantColor,
+        albumArt: ClipOval(
+          child: music.artworkUrl != null
+              ? CachedNetworkImage(
+                  imageUrl: music.artworkUrl!, fit: BoxFit.cover,
+                  placeholder: (_, __) => _placeholderArt(theme),
+                  errorWidget: (_, __, ___) => _placeholderArt(theme),
+                )
+              : _placeholderArt(theme),
         ),
       ),
     );
