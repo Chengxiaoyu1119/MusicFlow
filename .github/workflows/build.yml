@@ -38,6 +38,10 @@ jobs:
     needs: analyze
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -79,20 +83,3 @@ jobs:
         with:
           name: MusicFlow-macOS
           path: build/macos/Build/Products/Release/music_player.app
-
-  build-ios:
-    name: 📱 iOS
-    if: false  # 需要 Apple Developer 账号签名
-    runs-on: macos-latest
-    needs: analyze
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
-      - uses: actions/upload-artifact@v4
-        with:
-          name: MusicFlow-iOS
-          path: build/ios/Release-iphoneos/
