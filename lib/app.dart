@@ -412,46 +412,41 @@ class _BottomNavContent extends ConsumerWidget {
       (icon: Icons.settings_rounded, label: '设置', route: '/settings'),
     ];
 
-    return SizedBox(
+    return Container(
       height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(items.length, (i) {
-          final item = items[i];
           final isSelected = i == currentIndex;
           return Expanded(
             child: GestureDetector(
-              onTap: () => context.go(item.route),
+              onTap: () => context.go(items[i].route),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                margin: EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: isSelected ? 0 : 4,
-                ),
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   color: isSelected
-                      ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                      ? theme.colorScheme.primaryContainer.withValues(alpha: 0.6)
                       : Colors.transparent,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      item.icon,
+                    Icon(items[i].icon,
                       color: isSelected
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurfaceVariant,
-                      size: 22,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(item.label,
+                      size: 22),
+                    const SizedBox(height: 3),
+                    Text(items[i].label,
                       style: TextStyle(
                         color: isSelected
                             ? theme.colorScheme.primary
                             : theme.colorScheme.onSurfaceVariant,
                         fontSize: 10,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        letterSpacing: 0.2,
                       )),
                   ],
                 ),

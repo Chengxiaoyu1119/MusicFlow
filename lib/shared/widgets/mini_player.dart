@@ -27,7 +27,7 @@ class MiniPlayer extends ConsumerWidget {
         : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(

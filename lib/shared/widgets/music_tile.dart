@@ -24,7 +24,7 @@ class MusicTile extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.only(left: 16, right: 12, top: 4, bottom: 4),
       leading: showArtwork
           ? Container(
               decoration: BoxDecoration(
