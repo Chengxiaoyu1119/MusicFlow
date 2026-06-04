@@ -63,6 +63,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                 title: Text('导入文件'),
                 contentPadding: EdgeInsets.zero,
               )),
+              const PopupMenuItem(value: 'folder', child: ListTile(
+                leading: Icon(Icons.folder_open_rounded),
+                title: Text('导入文件夹'),
+                contentPadding: EdgeInsets.zero,
+              )),
               const PopupMenuItem(value: 'plugins', child: ListTile(
                 leading: Icon(Icons.extension_rounded),
                 title: Text('插件'),

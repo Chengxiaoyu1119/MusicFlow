@@ -3,29 +3,59 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audio_metadata_reader/audio_metadata_reader.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/platform_helper.dart';
 import '../models/music.dart';
 
+/// 音乐库服务 — 支持文件夹导入、元数据解析、艺术家/专辑分类
 class LibraryService {
   List<Music> _localMusic = [];
   bool _isScanning = false;
+  int _scanProgress = 0;
+  int _scanTotal = 0;
 
   List<Music> get localMusic => List.unmodifiable(_localMusic);
   bool get isScanning => _isScanning;
+  int get scanProgress => _scanProgress;
+  int get scanTotal => _scanTotal;
 
-  /// Scan local directories for music files
+  // ===================== 按艺术家/专辑分类 =====================
+
+  Map<String, List<Music>> get musicByArtist {
+    final map = <String, List<Music>>{};
+    for (final m in _localMusic) {
+      map.putIfAbsent(m.artist, () => []);
+      map[m.artist]!.add(m);
+    }
+    return map;
+  }
+
+  Map<String, List<Music>> get musicByAlbum {
+    final map = <String, List<Music>>{};
+    for (final m in _localMusic) {
+      final key = m.album.isNotEmpty ? m.album : '未知专辑';
+      map.putIfAbsent(key, () => []);
+      map[key]!.add(m);
+    }
+    return map;
+  }
+
+  List<String> get artists => musicByArtist.keys.toList()..sort();
+  List<String> get albums => musicByAlbum.keys.toList()..sort();
+
+  // ===================== 扫描本地音乐 =====================
+
   Future<List<Music>> scanLocalMusic() async {
     if (_isScanning) return _localMusic;
-
     _isScanning = true;
+    _scanProgress = 0;
 
     try {
-      // Request storage permissions
       if (PlatformHelper.isMobile) {
         var status = await Permission.storage.request();
         if (!status.isGranted) {
@@ -33,31 +63,67 @@ class LibraryService {
         }
       }
 
-      final musicDir = await getExternalStorageDirectory();
-      if (musicDir == null) {
-        // Try common music directories
-        final home = Platform.environment['HOME'] ?? '/';
-        final commonDirs = [
-          '${home}/Music',
-          '${home}/Downloads',
-        ];
-        for (final dir in commonDirs) {
-          await _scanDirectory(Directory(dir));
+      // 扫描常见音乐目录
+      final home = Platform.environment['HOME'] ?? '/';
+      final dirs = [
+        '${home}/Music',
+        '${home}/Downloads',
+        '${home}/Desktop',
+      ];
+
+      // 收集所有文件
+      final allFiles = <File>[];
+      for (final dirPath in dirs) {
+        final dir = Directory(dirPath);
+        if (await dir.exists()) {
+          try {
+            await for (final entity in dir.list(recursive: true)) {
+              if (entity is File) {
+                final path = entity.path.toLowerCase();
+                if (AppConstants.audioExtensions.any((ext) => path.endsWith(ext))) {
+                  allFiles.add(entity);
+                }
+              }
+            }
+          } catch (_) {}
         }
-      } else {
-        await _scanDirectory(musicDir);
+      }
+
+      _scanTotal = allFiles.length;
+
+      // 并发解析元数据（每次 5 个）
+      final batches = allFiles.length ~/ 5 + 1;
+      for (int b = 0; b < batches; b++) {
+        final batch = allFiles.skip(b * 5).take(5).toList();
+        await Future.wait(batch.map((file) async {
+          final music = await _parseAudioFile(file);
+          if (music != null && !_localMusic.any((m) => m.filePath == file.path)) {
+            _localMusic.add(music);
+          }
+          _scanProgress++;
+        }));
       }
     } catch (e) {
       debugPrint('Scan error: $e');
     } finally {
       _isScanning = false;
     }
-
     return _localMusic;
   }
 
-  Future<void> _scanDirectory(Directory dir) async {
-    if (!await dir.exists()) return;
+  // ===================== 导入文件夹 =====================
+
+  Future<List<Music>> pickMusicDirectory() async {
+    final result = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: '选择音乐文件夹',
+    );
+    if (result == null) return [];
+
+    final dir = Directory(result);
+    if (!await dir.exists()) return [];
+
+    _isScanning = true;
+    final newMusic = <Music>[];
 
     try {
       await for (final entity in dir.list(recursive: true)) {
@@ -67,52 +133,27 @@ class LibraryService {
             final music = await _parseAudioFile(entity);
             if (music != null && !_localMusic.any((m) => m.filePath == entity.path)) {
               _localMusic.add(music);
+              newMusic.add(music);
             }
           }
         }
       }
     } catch (e) {
-      debugPrint('Error scanning ${dir.path}: $e');
+      debugPrint('Import error: $e');
+    } finally {
+      _isScanning = false;
     }
+    return newMusic;
   }
 
-  Future<Music?> _parseAudioFile(File file) async {
-    try {
-      final name = file.uri.pathSegments.last;
-      // Basic parsing: remove extension, split artist - title
-      final basename = name.replaceAll(RegExp(r'\.[^.]+$'), '');
-      String title = basename;
-      String artist = 'Unknown Artist';
+  // ===================== 导入单个文件 =====================
 
-      // Try to parse "artist - title" pattern
-      final dashIndex = basename.indexOf(' - ');
-      if (dashIndex > 0) {
-        artist = basename.substring(0, dashIndex).trim();
-        title = basename.substring(dashIndex + 3).trim();
-      }
-
-      return Music(
-        id: 'local_${file.path.hashCode}',
-        title: title,
-        artist: artist,
-        filePath: file.path,
-        source: MusicSource.local,
-        duration: Duration.zero, // Will be updated by just_audio
-      );
-    } catch (e) {
-      debugPrint('Error parsing ${file.path}: $e');
-      return null;
-    }
-  }
-
-  /// Pick music files using file picker
   Future<List<Music>> pickMusicFiles() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['mp3', 'flac', 'wav', 'aac', 'ogg', 'm4a', 'opus', 'ape'],
       allowMultiple: true,
     );
-
     if (result == null) return [];
 
     final newMusic = <Music>[];
@@ -125,14 +166,65 @@ class LibraryService {
         }
       }
     }
-
     return newMusic;
   }
 
+  // ===================== 元数据解析 =====================
+
+  Future<Music?> _parseAudioFile(File file) async {
+    try {
+      final name = file.uri.pathSegments.last;
+
+      // 尝试从元数据读取
+      String title = '';
+      String artist = '未知艺术家';
+      String album = '';
+      Duration duration = Duration.zero;
+
+      try {
+        final metadata = readMetadata(file);
+        title = metadata.title ?? '';
+        artist = metadata.artist ?? '未知艺术家';
+        album = metadata.album ?? '';
+        duration = metadata.duration ?? Duration.zero;
+      } catch (e) {
+        // 元数据读取失败，文件名解析
+        title = '';
+      }
+
+      // 文件名解析 fallback
+      if (title.isEmpty) {
+        final basename = name.replaceAll(RegExp(r'\.[^.]+$'), '');
+        final dashIndex = basename.indexOf(' - ');
+        if (dashIndex > 0) {
+          artist = basename.substring(0, dashIndex).trim();
+          title = basename.substring(dashIndex + 3).trim();
+        } else {
+          title = basename;
+        }
+      }
+
+      return Music(
+        id: 'local_${file.path.hashCode}',
+        title: title,
+        artist: artist,
+        album: album,
+        filePath: file.path,
+        source: MusicSource.local,
+        duration: duration,
+      );
+    } catch (e) {
+      debugPrint('Parse error ${file.path}: $e');
+      return null;
+    }
+  }
+
+  // ===================== 持久化 =====================
+
   Future<void> savePlaylists(List<Playlist> playlists) async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonList = playlists.map((p) => p.toJson()).toList();
-    await prefs.setString(AppConstants.playlistsKey, jsonEncode(jsonList));
+    await prefs.setString(AppConstants.playlistsKey, jsonEncode(
+      playlists.map((p) => p.toJson()).toList()));
   }
 
   Future<List<Playlist>> loadPlaylists() async {
